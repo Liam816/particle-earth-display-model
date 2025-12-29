@@ -286,7 +286,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
   }, [currentMode]);
 
   return (
-    <div className="absolute top-6 right-[8%] z-50 flex flex-col items-end pointer-events-none">
+    <div className="absolute bottom-6 left-[3%] z-50 flex flex-col items-start pointer-events-none">
 
       
       {/* Camera Preview Frame */}

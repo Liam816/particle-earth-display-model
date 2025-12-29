@@ -60,10 +60,10 @@ const fragmentShader = `
     if (r > 0.5) discard;
 
     float glow = 1.0 - (r * 2.0);
-    glow = pow(glow, 1.5);
+    glow = pow(glow, 1.3);
     
-    vec3 finalColor = vColor * 0.75;
-    gl_FragColor = vec4(finalColor, vAlpha * glow * 0.85);
+    vec3 finalColor = vColor * 1.15;
+    gl_FragColor = vec4(finalColor, vAlpha * glow * 0.95);
   }
 `;
 

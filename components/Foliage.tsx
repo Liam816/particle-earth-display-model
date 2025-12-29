@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { TreeMode } from '../types';
 
@@ -8,6 +9,20 @@ interface FoliageProps {
   count: number;
 }
 
+const CITIES = [
+  { name: 'Edinburgh', lat: 55.95, lon: -3.19 },
+  { name: 'Tokyo', lat: 35.68, lon: 139.69 },
+  { name: 'Seoul', lat: 37.57, lon: 126.98 },
+  { name: 'Manila', lat: 14.60, lon: 120.98 },
+  { name: 'Kuala Lumpur', lat: 3.14, lon: 101.69 },
+  { name: 'Bangkok', lat: 13.76, lon: 100.50 },
+  { name: 'Shanghai', lat: 31.23, lon: 121.47 },
+  { name: 'Nantong', lat: 31.98, lon: 120.89 },
+  { name: 'Guangzhou', lat: 23.13, lon: 113.26 },
+];
+
+const EARTH_RADIUS = 6;
+const EARTH_CENTER_Y = 6;
 const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg';
 
 const vertexShader = `
@@ -67,6 +82,48 @@ const fragmentShader = `
   }
 `;
 
+const cityMarkerVertexShader = `
+  uniform float uTime;
+  uniform float uProgress;
+  
+  attribute vec3 aTargetPos;
+  attribute float aRandom;
+  
+  varying float vAlpha;
+
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(aTargetPos, 1.0);
+    
+    float pulse = sin(uTime * 4.0 + aRandom * 10.0) * 0.5 + 0.5;
+    float baseSize = 3.0 + pulse * 2.0;
+    gl_PointSize = baseSize * (40.0 / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
+    
+    vAlpha = uProgress * (0.7 + pulse * 0.3);
+  }
+`;
+
+const cityMarkerFragmentShader = `
+  varying float vAlpha;
+
+  void main() {
+    float r = distance(gl_PointCoord, vec2(0.5));
+    if (r > 0.5) discard;
+
+    float glow = 1.0 - (r * 2.0);
+    glow = pow(glow, 0.8);
+    
+    vec3 redColor = vec3(1.0, 0.2, 0.1);
+    gl_FragColor = vec4(redColor, vAlpha * glow);
+  }
+`;
+
+function latLonToSpherical(lat: number, lon: number): { theta: number; phi: number } {
+  const phi = (90 - lat) * Math.PI / 180;
+  const theta = (lon + 180) * Math.PI / 180;
+  return { theta, phi };
+}
+
 function sampleTexture(imageData: ImageData, phi: number, theta: number): THREE.Color {
   const u = theta / (2 * Math.PI);
   const v = phi / Math.PI;
@@ -88,7 +145,7 @@ function generateParticles(count: number, imageData: ImageData | null) {
   const rnd = new Float32Array(count);
   const colors = new Float32Array(count * 3);
 
-  const radius = 6;
+  const radius = EARTH_RADIUS;
 
   for (let i = 0; i < count; i++) {
     const r = 25 * Math.cbrt(Math.random());
@@ -105,7 +162,7 @@ function generateParticles(count: number, imageData: ImageData | null) {
     const spherePhi = Math.acos(2 * v - 1);
     
     target[i * 3] = radius * Math.sin(spherePhi) * Math.cos(sphereTheta);
-    target[i * 3 + 1] = radius * Math.cos(spherePhi) + 6;
+    target[i * 3 + 1] = radius * Math.cos(spherePhi) + EARTH_CENTER_Y;
     target[i * 3 + 2] = radius * Math.sin(spherePhi) * Math.sin(sphereTheta);
 
     const random = Math.random();
@@ -131,8 +188,28 @@ function generateParticles(count: number, imageData: ImageData | null) {
   };
 }
 
+function generateCityMarkers() {
+  const positions = new Float32Array(CITIES.length * 3);
+  const randoms = new Float32Array(CITIES.length);
+  
+  CITIES.forEach((city, i) => {
+    const { theta, phi } = latLonToSpherical(city.lat, city.lon);
+    const r = EARTH_RADIUS + 0.15;
+    
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = r * Math.cos(phi) + EARTH_CENTER_Y;
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    
+    randoms[i] = Math.random();
+  });
+  
+  return { positions, randoms };
+}
+
 export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   const meshRef = useRef<THREE.Points>(null);
+  const cityMarkersRef = useRef<THREE.Points>(null);
+  const cityLabelsRef = useRef<THREE.Group>(null);
   const progressRef = useRef(0);
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -164,7 +241,14 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
     return generateParticles(count, imageData);
   }, [count, imageData, isReady]);
 
+  const cityMarkerData = useMemo(() => generateCityMarkers(), []);
+
   const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uProgress: { value: 0 },
+  }), []);
+
+  const cityUniforms = useMemo(() => ({
     uTime: { value: 0 },
     uProgress: { value: 0 },
   }), []);
@@ -182,6 +266,18 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
         meshRef.current.rotation.y += delta * 0.03;
       }
     }
+    
+    if (cityMarkersRef.current) {
+      const material = cityMarkersRef.current.material as THREE.ShaderMaterial;
+      material.uniforms.uTime.value = state.clock.elapsedTime;
+      material.uniforms.uProgress.value = progressRef.current;
+      
+      cityMarkersRef.current.rotation.y = meshRef.current?.rotation.y || 0;
+    }
+    
+    if (cityLabelsRef.current) {
+      cityLabelsRef.current.rotation.y = meshRef.current?.rotation.y || 0;
+    }
   });
 
   if (!particleData) {
@@ -189,48 +285,110 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   }
 
   return (
-    <points ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={particleData.chaosPositions}
-          itemSize={3}
+    <>
+      <points ref={meshRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={count}
+            array={particleData.chaosPositions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aChaosPos"
+            count={count}
+            array={particleData.chaosPositions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aTargetPos"
+            count={count}
+            array={particleData.targetPositions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aRandom"
+            count={count}
+            array={particleData.randoms}
+            itemSize={1}
+          />
+          <bufferAttribute
+            attach="attributes-aEarthColor"
+            count={count}
+            array={particleData.earthColors}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        {/* @ts-ignore */}
+        <shaderMaterial
+          vertexShader={vertexShader}
+          fragmentShader={fragmentShader}
+          uniforms={uniforms}
+          transparent
+          depthWrite={false}
+          blending={THREE.NormalBlending}
         />
-        <bufferAttribute
-          attach="attributes-aChaosPos"
-          count={count}
-          array={particleData.chaosPositions}
-          itemSize={3}
+      </points>
+      
+      <points ref={cityMarkersRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={CITIES.length}
+            array={cityMarkerData.positions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aTargetPos"
+            count={CITIES.length}
+            array={cityMarkerData.positions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aRandom"
+            count={CITIES.length}
+            array={cityMarkerData.randoms}
+            itemSize={1}
+          />
+        </bufferGeometry>
+        {/* @ts-ignore */}
+        <shaderMaterial
+          vertexShader={cityMarkerVertexShader}
+          fragmentShader={cityMarkerFragmentShader}
+          uniforms={cityUniforms}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
-        <bufferAttribute
-          attach="attributes-aTargetPos"
-          count={count}
-          array={particleData.targetPositions}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-aRandom"
-          count={count}
-          array={particleData.randoms}
-          itemSize={1}
-        />
-        <bufferAttribute
-          attach="attributes-aEarthColor"
-          count={count}
-          array={particleData.earthColors}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      {/* @ts-ignore */}
-      <shaderMaterial
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-        blending={THREE.NormalBlending}
-      />
-    </points>
+      </points>
+      
+      <group ref={cityLabelsRef}>
+        {CITIES.map((city, i) => {
+          const { theta, phi } = latLonToSpherical(city.lat, city.lon);
+          const r = EARTH_RADIUS + 0.4;
+          const x = r * Math.sin(phi) * Math.cos(theta);
+          const y = r * Math.cos(phi) + EARTH_CENTER_Y;
+          const z = r * Math.sin(phi) * Math.sin(theta);
+          const isNantong = city.name === 'Nantong';
+          const isShanghai = city.name === 'Shanghai';
+          const anchor = isNantong ? 'left' : isShanghai ? 'right' : 'left';
+          const offsetX = isNantong ? 0.01 : isShanghai ? -0.01 : 0;
+          return (
+            <Billboard key={city.name} position={[x + offsetX, y, z]} follow={true}>
+              <Text
+                fontSize={0.4}
+                color="#F5E6BF"
+                anchorX={anchor}
+                anchorY="middle"
+                outlineWidth={0.02}
+                outlineColor="#8B4513"
+              >
+                {city.name}
+              </Text>
+            </Billboard>
+          );
+        })}
+      </group>
+    </>
   );
 };

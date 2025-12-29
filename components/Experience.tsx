@@ -96,7 +96,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       <pointLight position={[-10, 5, -10]} intensity={1} color="#D4AF37" />
 
       <group position={[0, -5, 0]}>
-        <Foliage mode={mode} count={80000} />
+        <Foliage mode={mode} count={1000000} />
         <Ornaments mode={mode} count={600} />
         <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} twoHandsDetected={twoHandsDetected} onClosestPhotoChange={onClosestPhotoChange} />
         

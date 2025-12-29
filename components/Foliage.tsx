@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { TreeMode } from '../types';
@@ -19,6 +19,8 @@ const CITIES = [
   { name: 'Nantong', lat: 31.98, lon: 120.89 },
   { name: 'Guangzhou', lat: 23.13, lon: 113.26 },
 ];
+
+const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg';
 
 const vertexShader = `
   uniform float uTime;
@@ -53,7 +55,7 @@ const vertexShader = `
 
     vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
     
-    float baseSize = aIsCity > 0.5 ? 6.0 : (1.2 * aRandom + 0.8);
+    float baseSize = aIsCity > 0.5 ? 4.0 : (1.0 * aRandom + 0.6);
     gl_PointSize = baseSize * (35.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
 
@@ -62,14 +64,10 @@ const vertexShader = `
     vIsCity = aIsCity;
     
     if (aIsCity > 0.5) {
-      float pulse = sin(uTime * 3.0) * 0.3 + 0.7;
-      vColor = mix(goldColor, vec3(1.0, 0.3, 0.1) * pulse + vec3(1.0, 0.8, 0.2) * (1.0 - pulse), easedProgress);
+      float pulse = sin(uTime * 2.5) * 0.2 + 0.8;
+      vColor = mix(goldColor, vec3(1.0, 0.5, 0.2) * pulse, easedProgress);
     } else {
-      float sparkle = sin(uTime * 3.0 + aRandom * 100.0);
       vColor = mix(goldColor, aEarthColor, easedProgress);
-      if (sparkle > 0.97) {
-        vColor += vec3(0.1);
-      }
     }
 
     vAlpha = 1.0;
@@ -88,9 +86,9 @@ const fragmentShader = `
     float glow = 1.0 - (r * 2.0);
     
     if (vIsCity > 0.5) {
-      glow = pow(glow, 0.8);
+      glow = pow(glow, 0.7);
     } else {
-      glow = pow(glow, 1.2);
+      glow = pow(glow, 1.0);
     }
 
     gl_FragColor = vec4(vColor, vAlpha * glow);
@@ -103,201 +101,133 @@ function latLonToSpherical(lat: number, lon: number): { theta: number; phi: numb
   return { theta, phi };
 }
 
-function isNearCity(phi: number, theta: number): boolean {
-  const lat = 90 - phi * 180 / Math.PI;
-  const lon = theta * 180 / Math.PI - 180;
+function sampleTexture(imageData: ImageData, phi: number, theta: number): THREE.Color {
+  const u = theta / (2 * Math.PI);
+  const v = phi / Math.PI;
   
+  const x = Math.floor(u * (imageData.width - 1));
+  const y = Math.floor(v * (imageData.height - 1));
+  const idx = (y * imageData.width + x) * 4;
+  
+  return new THREE.Color(
+    imageData.data[idx] / 255,
+    imageData.data[idx + 1] / 255,
+    imageData.data[idx + 2] / 255
+  );
+}
+
+function generateParticles(count: number, imageData: ImageData | null) {
+  const chaos = new Float32Array(count * 3);
+  const target = new Float32Array(count * 3);
+  const rnd = new Float32Array(count);
+  const colors = new Float32Array(count * 3);
+  const cities = new Float32Array(count);
+
+  const radius = 6;
+  
+  const cityParticles: { theta: number; phi: number }[] = [];
   for (const city of CITIES) {
-    const dLat = Math.abs(lat - city.lat);
-    const dLon = Math.abs(lon - city.lon);
-    if (dLat < 3 && dLon < 3) {
-      return true;
+    const { theta, phi } = latLonToSpherical(city.lat, city.lon);
+    for (let j = 0; j < 80; j++) {
+      const spread = 0.03;
+      cityParticles.push({
+        theta: theta + (Math.random() - 0.5) * spread,
+        phi: phi + (Math.random() - 0.5) * spread
+      });
     }
   }
-  return false;
-}
 
-function isLand(lat: number, lon: number): { isLand: boolean; landType: string } {
-  lat = lat * 180 / Math.PI - 90;
-  lon = lon * 180 / Math.PI - 180;
-  
-  if (lat > 70 || lat < -65) {
-    return { isLand: true, landType: 'ice' };
-  }
-  
-  if (lon > -170 && lon < -50) {
-    if (lat > 25 && lat < 70) {
-      if (lon > -130 && lon < -100 && lat > 35 && lat < 55) {
-        return { isLand: true, landType: 'forest' };
-      }
-      return { isLand: true, landType: 'land' };
-    }
-    if (lat > -60 && lat < 15 && lon > -85 && lon < -30) {
-      if (lat > -10 && lat < 5 && lon > -80 && lon < -45) {
-        return { isLand: true, landType: 'rainforest' };
-      }
-      return { isLand: true, landType: 'land' };
-    }
-  }
-  
-  if (lon > -20 && lon < 55) {
-    if (lat > -38 && lat < 38) {
-      if (lat > 15 && lat < 35 && lon > -15 && lon < 35) {
-        return { isLand: true, landType: 'desert' };
-      }
-      if (lat > -5 && lat < 8 && lon > 5 && lon < 30) {
-        return { isLand: true, landType: 'rainforest' };
-      }
-      if (lat > -35 && lat < -20 && lon > 15 && lon < 35) {
-        return { isLand: true, landType: 'land' };
-      }
-      if (lat > 30 && lat < 45 && lon > -10 && lon < 45) {
-        return { isLand: true, landType: 'land' };
-      }
-      return { isLand: true, landType: 'land' };
-    }
-  }
-  
-  if (lon > -15 && lon < 180 && lat > 38 && lat < 72) {
-    if (lon > 55 && lon < 150 && lat > 50 && lat < 70) {
-      return { isLand: true, landType: 'forest' };
-    }
-    return { isLand: true, landType: 'land' };
-  }
-  
-  if (lon > 65 && lon < 145 && lat > -12 && lat < 38) {
-    if (lon > 75 && lon < 100 && lat > 25 && lat < 35) {
-      return { isLand: true, landType: 'mountain' };
-    }
-    if (lon > 95 && lon < 125 && lat > 5 && lat < 25) {
-      return { isLand: true, landType: 'rainforest' };
-    }
-    if (lon > 100 && lon < 125 && lat > 18 && lat < 42) {
-      return { isLand: true, landType: 'land' };
-    }
-    if (lon > 125 && lon < 145 && lat > 30 && lat < 45) {
-      return { isLand: true, landType: 'land' };
-    }
-    return { isLand: true, landType: 'land' };
-  }
-  
-  if (lon > 112 && lon < 155 && lat > -45 && lat < -10) {
-    if (lat < -28 && lon > 120 && lon < 145) {
-      return { isLand: true, landType: 'desert' };
-    }
-    return { isLand: true, landType: 'land' };
-  }
-  
-  return { isLand: false, landType: 'ocean' };
-}
+  let cityIndex = 0;
+  const totalCityParticles = cityParticles.length;
 
-function getEarthColor(phi: number, theta: number, random: number): THREE.Color {
-  const terrain = isLand(phi, theta);
-  
-  if (!terrain.isLand) {
-    const depth = random;
-    if (depth > 0.7) {
-      return new THREE.Color(0.02, 0.15, 0.4);
-    } else if (depth > 0.4) {
-      return new THREE.Color(0.03, 0.22, 0.5);
+  for (let i = 0; i < count; i++) {
+    const r = 25 * Math.cbrt(Math.random());
+    const cTheta = Math.random() * 2 * Math.PI;
+    const cPhi = Math.acos(2 * Math.random() - 1);
+    
+    chaos[i * 3] = r * Math.sin(cPhi) * Math.cos(cTheta);
+    chaos[i * 3 + 1] = r * Math.sin(cPhi) * Math.sin(cTheta) + 5;
+    chaos[i * 3 + 2] = r * Math.cos(cPhi);
+
+    let sphereTheta: number;
+    let spherePhi: number;
+    let isCity = false;
+
+    if (cityIndex < totalCityParticles && i < totalCityParticles) {
+      sphereTheta = cityParticles[cityIndex].theta;
+      spherePhi = cityParticles[cityIndex].phi;
+      isCity = true;
+      cityIndex++;
     } else {
-      return new THREE.Color(0.05, 0.3, 0.6);
+      const u = Math.random();
+      const v = Math.random();
+      sphereTheta = 2 * Math.PI * u;
+      spherePhi = Math.acos(2 * v - 1);
     }
+    
+    target[i * 3] = radius * Math.sin(spherePhi) * Math.cos(sphereTheta);
+    target[i * 3 + 1] = radius * Math.cos(spherePhi) + 6;
+    target[i * 3 + 2] = radius * Math.sin(spherePhi) * Math.sin(sphereTheta);
+
+    const random = Math.random();
+    rnd[i] = random;
+    cities[i] = isCity ? 1.0 : 0.0;
+    
+    let color: THREE.Color;
+    if (isCity) {
+      color = new THREE.Color(1.0, 0.6, 0.2);
+    } else if (imageData) {
+      color = sampleTexture(imageData, spherePhi, sphereTheta);
+    } else {
+      color = new THREE.Color(0.1, 0.3, 0.6);
+    }
+    
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
   }
-  
-  switch (terrain.landType) {
-    case 'ice':
-      return new THREE.Color(0.85 + random * 0.15, 0.9 + random * 0.1, 0.95 + random * 0.05);
-    case 'desert':
-      return new THREE.Color(0.7 + random * 0.15, 0.55 + random * 0.1, 0.3 + random * 0.1);
-    case 'rainforest':
-      return new THREE.Color(0.05 + random * 0.08, 0.35 + random * 0.1, 0.1 + random * 0.08);
-    case 'forest':
-      return new THREE.Color(0.1 + random * 0.08, 0.3 + random * 0.12, 0.12 + random * 0.08);
-    case 'mountain':
-      return new THREE.Color(0.4 + random * 0.15, 0.35 + random * 0.15, 0.3 + random * 0.1);
-    default:
-      return new THREE.Color(0.2 + random * 0.12, 0.45 + random * 0.12, 0.18 + random * 0.1);
-  }
+
+  return {
+    chaosPositions: chaos,
+    targetPositions: target,
+    randoms: rnd,
+    earthColors: colors,
+    cityFlags: cities
+  };
 }
 
 export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   const meshRef = useRef<THREE.Points>(null);
   const progressRef = useRef(0);
+  const [imageData, setImageData] = useState<ImageData | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  const { chaosPositions, targetPositions, randoms, earthColors, cityFlags } = useMemo(() => {
-    const chaos = new Float32Array(count * 3);
-    const target = new Float32Array(count * 3);
-    const rnd = new Float32Array(count);
-    const colors = new Float32Array(count * 3);
-    const cities = new Float32Array(count);
-
-    const radius = 6;
-    
-    const cityParticles: { theta: number; phi: number }[] = [];
-    for (const city of CITIES) {
-      const { theta, phi } = latLonToSpherical(city.lat, city.lon);
-      for (let j = 0; j < 80; j++) {
-        const spread = 0.03;
-        cityParticles.push({
-          theta: theta + (Math.random() - 0.5) * spread,
-          phi: phi + (Math.random() - 0.5) * spread
-        });
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setImageData(data);
       }
-    }
-
-    let cityIndex = 0;
-    const totalCityParticles = cityParticles.length;
-
-    for (let i = 0; i < count; i++) {
-      const r = 25 * Math.cbrt(Math.random());
-      const cTheta = Math.random() * 2 * Math.PI;
-      const cPhi = Math.acos(2 * Math.random() - 1);
-      
-      chaos[i * 3] = r * Math.sin(cPhi) * Math.cos(cTheta);
-      chaos[i * 3 + 1] = r * Math.sin(cPhi) * Math.sin(cTheta) + 5;
-      chaos[i * 3 + 2] = r * Math.cos(cPhi);
-
-      let sphereTheta: number;
-      let spherePhi: number;
-      let isCity = false;
-
-      if (cityIndex < totalCityParticles && i < totalCityParticles) {
-        sphereTheta = cityParticles[cityIndex].theta;
-        spherePhi = cityParticles[cityIndex].phi;
-        isCity = true;
-        cityIndex++;
-      } else {
-        const u = Math.random();
-        const v = Math.random();
-        sphereTheta = 2 * Math.PI * u;
-        spherePhi = Math.acos(2 * v - 1);
-      }
-      
-      target[i * 3] = radius * Math.sin(spherePhi) * Math.cos(sphereTheta);
-      target[i * 3 + 1] = radius * Math.cos(spherePhi) + 6;
-      target[i * 3 + 2] = radius * Math.sin(spherePhi) * Math.sin(sphereTheta);
-
-      const random = Math.random();
-      rnd[i] = random;
-      cities[i] = isCity ? 1.0 : 0.0;
-      
-      const color = isCity 
-        ? new THREE.Color(1.0, 0.5, 0.1)
-        : getEarthColor(spherePhi, sphereTheta, random);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
-    }
-
-    return {
-      chaosPositions: chaos,
-      targetPositions: target,
-      randoms: rnd,
-      earthColors: colors,
-      cityFlags: cities
+      setIsReady(true);
     };
-  }, [count]);
+    img.onerror = () => {
+      console.warn('Failed to load earth texture, using fallback');
+      setIsReady(true);
+    };
+    img.src = EARTH_TEXTURE_URL;
+  }, []);
+
+  const particleData = useMemo(() => {
+    if (!isReady) return null;
+    return generateParticles(count, imageData);
+  }, [count, imageData, isReady]);
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
@@ -319,43 +249,47 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
     }
   });
 
+  if (!particleData) {
+    return null;
+  }
+
   return (
     <points ref={meshRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           count={count}
-          array={chaosPositions}
+          array={particleData.chaosPositions}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-aChaosPos"
           count={count}
-          array={chaosPositions}
+          array={particleData.chaosPositions}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-aTargetPos"
           count={count}
-          array={targetPositions}
+          array={particleData.targetPositions}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-aRandom"
           count={count}
-          array={randoms}
+          array={particleData.randoms}
           itemSize={1}
         />
         <bufferAttribute
           attach="attributes-aEarthColor"
           count={count}
-          array={earthColors}
+          array={particleData.earthColors}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-aIsCity"
           count={count}
-          array={cityFlags}
+          array={particleData.cityFlags}
           itemSize={1}
         />
       </bufferGeometry>

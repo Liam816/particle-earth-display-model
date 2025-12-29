@@ -24,31 +24,22 @@ export const Ornaments: React.FC<OrnamentsProps> = ({ mode, count }) => {
   const lightsData = useMemo(() => {
     const _lights: InstanceData[] = [];
 
-    const earthRadius = 6;
-    const earthCenterY = 6;
-    
     const lightColors = [
       new THREE.Color("#FFFFAA"),
       new THREE.Color("#FFE4B5"),
       new THREE.Color("#87CEEB"),
       new THREE.Color("#98FB98"),
+      new THREE.Color("#FFFFFF"),
     ];
 
     const lightCount = Math.floor(count * 0.15);
 
     for (let i = 0; i < lightCount; i++) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
+      const x = (Math.random() - 0.5) * 80;
+      const y = Math.random() * 40 - 5;
+      const z = (Math.random() - 0.5) * 80;
       
-      const r = earthRadius + 0.3 + Math.random() * 0.5;
-      
-      const targetPos = new THREE.Vector3(
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi) + earthCenterY,
-        r * Math.sin(phi) * Math.sin(theta)
-      );
+      const targetPos = new THREE.Vector3(x, y, z);
 
       const cR = 15 + Math.random() * 15;
       const cTheta = Math.random() * Math.PI * 2;
@@ -59,7 +50,7 @@ export const Ornaments: React.FC<OrnamentsProps> = ({ mode, count }) => {
         cR * Math.cos(cPhi)
       );
 
-      const scale = 0.08 + Math.random() * 0.12;
+      const scale = 0.03 + Math.random() * 0.08;
       const color = lightColors[Math.floor(Math.random() * lightColors.length)];
 
       _lights.push({
@@ -100,14 +91,7 @@ export const Ornaments: React.FC<OrnamentsProps> = ({ mode, count }) => {
       const step = delta * d.speed;
       dummy.position.lerp(dest, step);
 
-      if (isFormed) {
-        const currentRadius = Math.sqrt(dummy.position.x ** 2 + dummy.position.z ** 2);
-        const currentAngle = Math.atan2(dummy.position.z, dummy.position.x) + delta * 0.1;
-        dummy.position.x = currentRadius * Math.cos(currentAngle);
-        dummy.position.z = currentRadius * Math.sin(currentAngle);
-      }
-
-      const pulse = 1 + Math.sin(time * 5 + d.chaosPos.y) * 0.3;
+      const pulse = 1 + Math.sin(time * 2 + i * 0.5) * 0.2;
       dummy.scale.setScalar(d.scale * pulse);
 
       dummy.updateMatrix();

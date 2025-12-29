@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { TreeMode } from '../types';
@@ -20,6 +20,18 @@ const CITIES = [
   { name: 'Nantong', lat: 31.98, lon: 120.89 },
   { name: 'Guangzhou', lat: 23.13, lon: 113.26 },
 ];
+
+const CITY_IMAGES: Record<string, string> = {
+  'Edinburgh': '/imgs/edinburgh.jpg',
+  'Tokyo': '/imgs/tokyo.jpg',
+  'Seoul': '/imgs/seoul.jpg',
+  'Manila': '/imgs/manila.jpg',
+  'Kuala Lumpur': '/imgs/kuala-lumpur.jpg',
+  'Bangkok': '/imgs/bangkok.jpg',
+  'Shanghai': '/imgs/shanghai.jpg',
+  'Nantong': '/imgs/nantong.jpg',
+  'Guangzhou': '/imgs/guangzhou.jpg',
+};
 
 const EARTH_RADIUS = 6;
 const EARTH_CENTER_Y = 6;
@@ -123,6 +135,54 @@ function latLonToSpherical(lat: number, lon: number): { theta: number; phi: numb
   const theta = (lon + 180) * Math.PI / 180;
   return { theta, phi };
 }
+
+const CityImage: React.FC<{ cityName: string }> = ({ cityName }) => {
+  const imagePath = CITY_IMAGES[cityName];
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [error, setError] = useState(false);
+  
+  useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      imagePath,
+      (loadedTexture) => {
+        loadedTexture.colorSpace = THREE.SRGBColorSpace;
+        setTexture(loadedTexture);
+        setError(false);
+      },
+      undefined,
+      () => {
+        console.warn(`Failed to load image for ${cityName}`);
+        setError(true);
+      }
+    );
+  }, [imagePath, cityName]);
+  
+  if (!texture && !error) return null;
+  
+  return (
+    <group position={[0, -0.55, 0]}>
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[0.72, 0.9, 0.012]} />
+        <meshStandardMaterial color="#fdfdfd" roughness={0.8} />
+      </mesh>
+
+      <mesh position={[0, 0.09, 0.015]}>
+        <planeGeometry args={[0.6, 0.6]} />
+        {texture && !error ? (
+          <meshBasicMaterial map={texture} />
+        ) : (
+          <meshStandardMaterial color={error ? "#550000" : "#cccccc"} />
+        )}
+      </mesh>
+      
+      <mesh position={[0, 0.42, 0.015]}>
+        <boxGeometry args={[0.06, 0.03, 0.03]} />
+        <meshStandardMaterial color="#D4AF37" metalness={1} roughness={0.2} />
+      </mesh>
+    </group>
+  );
+};
 
 function sampleTexture(imageData: ImageData, phi: number, theta: number): THREE.Color {
   const u = theta / (2 * Math.PI);
@@ -382,9 +442,11 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
                 anchorY="middle"
                 outlineWidth={0.02}
                 outlineColor="#8B4513"
+                position={[0, 0.35, 0]}
               >
                 {city.name}
               </Text>
+              <CityImage cityName={city.name} />
             </Billboard>
           );
         })}

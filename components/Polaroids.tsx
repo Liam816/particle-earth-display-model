@@ -22,7 +22,10 @@ import { TreeMode } from '../types';
  * ==================================================================================
  */
 
-const PHOTO_COUNT = 22; // How many polaroid frames to generate
+const PHOTO_COUNT = 22;
+
+const EARTH_RADIUS = 6;
+const EARTH_CENTER_Y = 6;
 
 interface PolaroidsProps {
   mode: TreeMode;
@@ -189,44 +192,33 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, twoH
     }
 
     const data: PhotoData[] = [];
-    const height = 9; // Range of height on tree
-    const maxRadius = 5.0; // Slightly outside the foliage radius (which is approx 5 at bottom)
-    
     const count = uploadedPhotos.length;
 
     for (let i = 0; i < count; i++) {
-      // 1. Target Position
-      // Distributed nicely on the cone surface
-      const yNorm = 0.2 + (i / count) * 0.6; // Keep between 20% and 80% height
-      const y = yNorm * height;
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
       
-      // Radius decreases as we go up
-      const r = maxRadius * (1 - yNorm) + 0.8; // +0.8 to ensure it floats OUTSIDE leaves
-      
-      // Golden Angle Spiral for even distribution
-      const theta = i * 2.39996; // Golden angle in radians
+      const r = EARTH_RADIUS + 1.5;
       
       const targetPos = new THREE.Vector3(
-        r * Math.cos(theta),
-        y,
-        r * Math.sin(theta)
+        r * Math.sin(phi) * Math.cos(theta),
+        r * Math.cos(phi) + EARTH_CENTER_Y,
+        r * Math.sin(phi) * Math.sin(theta)
       );
 
-      // 2. Chaos Position - Spread out and closer to camera
-      // Camera is at [0, 4, 20], Scene group offset is [0, -5, 0]
-      // So relative to scene, camera is at y=9
-      const relativeY = 5; // Lower position for better visibility
-      const relativeZ = 20; // Camera Z
+      const relativeY = 5;
+      const relativeZ = 20;
       
-      // Create positions spread widely around camera, very close
-      const angle = (i / count) * Math.PI * 2; // Distribute evenly
-      const distance = 3 + Math.random() * 4; // Distance 3-7 units (very close)
-      const heightSpread = (Math.random() - 0.5) * 8; // Height variation -4 to +4 (more spread)
+      const angle = (i / count) * Math.PI * 2;
+      const distance = 3 + Math.random() * 4;
+      const heightSpread = (Math.random() - 0.5) * 8;
       
       const chaosPos = new THREE.Vector3(
-        distance * Math.cos(angle) * 1.2, // X spread wider
-        relativeY + heightSpread, // More vertical spread
-        relativeZ - 4 + distance * Math.sin(angle) * 0.5 // Very close to camera (Z ~16-19)
+        distance * Math.cos(angle) * 1.2,
+        relativeY + heightSpread,
+        relativeZ - 4 + distance * Math.sin(angle) * 0.5
       );
 
       data.push({

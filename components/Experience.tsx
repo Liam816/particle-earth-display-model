@@ -7,7 +7,6 @@ import { useFrame } from '@react-three/fiber';
 import { Foliage } from './Foliage';
 import { Ornaments } from './Ornaments';
 import { Polaroids } from './Polaroids';
-import { TreeStar } from './TreeStar';
 import { TreeMode } from '../types';
 
 interface ExperienceProps {
@@ -30,17 +29,13 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       // x: 0 (left) to 1 (right) -> azimuthal angle (horizontal rotation)
       // y: 0 (top) to 1 (bottom) -> polar angle (vertical tilt)
       
-      // Target azimuthal angle: increased range for larger rotation
-      const targetAzimuth = (handPosition.x - 0.5) * Math.PI * 3; // Increased from 2 to 3
+      const targetAzimuth = (handPosition.x - 0.5) * Math.PI * 3;
       
-      // Adjust Y mapping so natural hand position gives best view
-      // Offset Y so hand at 0.4-0.5 range gives centered view
-      const adjustedY = (handPosition.y - 0.2) * 2.0; // Increased sensitivity from 1.5 to 2.0
-      const clampedY = Math.max(0, Math.min(1, adjustedY)); // Clamp to 0-1
+      const adjustedY = (handPosition.y - 0.2) * 2.0;
+      const clampedY = Math.max(0, Math.min(1, adjustedY));
       
-      // Target polar angle: PI/4 to PI/1.8 (constrained vertical angle)
-      const minPolar = Math.PI / 4;
-      const maxPolar = Math.PI / 1.8;
+      const minPolar = Math.PI / 6;
+      const maxPolar = Math.PI / 1.5;
       const targetPolar = minPolar + clampedY * (maxPolar - minPolar);
       
       // Get current angles
@@ -59,7 +54,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       
       // Calculate new camera position in spherical coordinates
       const radius = controls.getDistance();
-      const targetY = 4; // Tree center height
+      const targetY = 1;
       
       const x = radius * Math.sin(newPolar) * Math.sin(newAzimuth);
       const y = targetY + radius * Math.cos(newPolar);
@@ -67,7 +62,7 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       
       // Update camera position and target
       controls.object.position.set(x, y, z);
-      controls.target.set(0, targetY, 0);
+      controls.target.set(0, 1, 0);
       controls.update();
     }
   });
@@ -76,13 +71,14 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       <OrbitControls 
         ref={controlsRef}
         enablePan={false} 
-        minPolarAngle={Math.PI / 4} 
-        maxPolarAngle={Math.PI / 1.8}
-        minDistance={10}
-        maxDistance={30}
+        minPolarAngle={Math.PI / 6} 
+        maxPolarAngle={Math.PI / 1.5}
+        minDistance={12}
+        maxDistance={35}
         enableDamping
         dampingFactor={0.05}
         enabled={true}
+        target={[0, 1, 0]}
       />
 
       {/* Lighting Setup for Maximum Luxury */}
@@ -100,17 +96,15 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
       <pointLight position={[-10, 5, -10]} intensity={1} color="#D4AF37" />
 
       <group position={[0, -5, 0]}>
-        <Foliage mode={mode} count={12000} />
+        <Foliage mode={mode} count={15000} />
         <Ornaments mode={mode} count={600} />
         <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} twoHandsDetected={twoHandsDetected} onClosestPhotoChange={onClosestPhotoChange} />
-        <TreeStar mode={mode} />
         
-        {/* Floor Reflections */}
         <ContactShadows 
-          opacity={0.7} 
-          scale={30} 
+          opacity={0.5} 
+          scale={40} 
           blur={2} 
-          far={4.5} 
+          far={6} 
           color="#000000" 
         />
       </group>

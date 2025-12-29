@@ -83,11 +83,10 @@ const PolaroidItem: React.FC<{ data: PhotoData; mode: TreeMode; index: number }>
 
     // 2. Rotation & Sway Logic
     if (isFormed) {
-        // Look at center but face outward
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
-        dummy.lookAt(0, groupRef.current.position.y, 0); 
-        dummy.rotateY(Math.PI); // Flip to face out
+        dummy.lookAt(0, EARTH_CENTER_Y, 0);
+        dummy.rotateY(Math.PI);
         
         // Base rotation alignment
         groupRef.current.quaternion.slerp(dummy.quaternion, step);
@@ -195,17 +194,17 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, twoH
     const count = uploadedPhotos.length;
 
     for (let i = 0; i < count; i++) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      const theta = goldenAngle * i;
+      const y = 1 - (i / (count - 1)) * 2;
+      const radiusAtY = Math.sqrt(1 - y * y);
       
-      const r = EARTH_RADIUS + 1.5;
+      const r = EARTH_RADIUS + 1.2;
       
       const targetPos = new THREE.Vector3(
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi) + EARTH_CENTER_Y,
-        r * Math.sin(phi) * Math.sin(theta)
+        r * radiusAtY * Math.cos(theta),
+        r * y + EARTH_CENTER_Y,
+        r * radiusAtY * Math.sin(theta)
       );
 
       const relativeY = 5;

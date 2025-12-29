@@ -286,7 +286,7 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   const meshRef = useRef<THREE.Points>(null);
   const cityMarkersRef = useRef<THREE.Points>(null);
   const cityLabelsRef = useRef<THREE.Group>(null);
-  const progressRef = useRef(0);
+  const progressRef = useRef(mode === TreeMode.FORMED ? 1 : 0);
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [selectedCityData, setSelectedCityData] = useState<{ name: string; url: string } | null>(null);
@@ -322,12 +322,12 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
 
   const uniforms = useMemo(() => ({
     uTime: { value: 0 },
-    uProgress: { value: 0 },
+    uProgress: { value: mode === TreeMode.FORMED ? 1 : 0 },
   }), []);
 
   const cityUniforms = useMemo(() => ({
     uTime: { value: 0 },
-    uProgress: { value: 0 },
+    uProgress: { value: mode === TreeMode.FORMED ? 1 : 0 },
   }), []);
 
   useFrame((state, delta) => {

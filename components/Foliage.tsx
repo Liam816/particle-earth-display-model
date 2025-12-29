@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
-import { Text, Billboard } from '@react-three/drei';
+import { Text, Billboard, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { TreeMode } from '../types';
 
@@ -136,11 +136,19 @@ function latLonToSpherical(lat: number, lon: number): { theta: number; phi: numb
   return { theta, phi };
 }
 
-const CityImage: React.FC<{ cityName: string }> = ({ cityName }) => {
+const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityName, onClick }) => {
   const imagePath = CITY_IMAGES[cityName];
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
+  const [hovered, setHovered] = useState(false);
   
+  useEffect(() => {
+    document.body.style.cursor = hovered ? 'pointer' : 'auto';
+    return () => {
+      document.body.style.cursor = 'auto';
+    };
+  }, [hovered]);
+
   useEffect(() => {
     const loader = new THREE.TextureLoader();
     loader.load(
@@ -161,7 +169,15 @@ const CityImage: React.FC<{ cityName: string }> = ({ cityName }) => {
   if (!texture && !error) return null;
   
   return (
-    <group position={[0, -0.55, 0]}>
+    <group 
+      position={[0, -0.55, 0]} 
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      onPointerOver={() => setHovered(true)}
+      onPointerOut={() => setHovered(false)}
+    >
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.72, 0.9, 0.012]} />
         <meshStandardMaterial color="#fdfdfd" roughness={0.8} />
@@ -273,6 +289,7 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   const progressRef = useRef(0);
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [selectedCityData, setSelectedCityData] = useState<{ name: string; url: string } | null>(null);
 
   useEffect(() => {
     const img = new Image();
@@ -446,11 +463,98 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
               >
                 {city.name}
               </Text>
-              <CityImage cityName={city.name} />
+              <CityImage 
+                cityName={city.name} 
+                onClick={() => setSelectedCityData({ name: city.name, url: CITY_IMAGES[city.name] })}
+              />
             </Billboard>
           );
         })}
       </group>
+
+      {selectedCityData && (
+        <Html 
+          portal={{ current: document.body }}
+          calculatePosition={() => [0, 0]}
+          style={{ 
+            pointerEvents: 'none',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 10001
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'rgba(0, 0, 0, 0.75)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              zIndex: 10001,
+            }}
+            onClick={() => setSelectedCityData(null)}
+          >
+            <div
+              style={{
+                backgroundColor: 'white',
+                padding: '16px 16px 60px 16px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                maxWidth: '90vw',
+                maxHeight: '85vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                transform: 'rotate(-1.5deg)',
+                transition: 'transform 0.2s',
+                borderRadius: '2px',
+                pointerEvents: 'auto',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ 
+                position: 'relative', 
+                overflow: 'hidden',
+                backgroundColor: '#f0f0f0',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: '300px',
+                minHeight: '200px',
+              }}>
+                <img
+                  src={selectedCityData.url}
+                  alt={selectedCityData.name}
+                  style={{
+                    display: 'block',
+                    maxWidth: '100%',
+                    maxHeight: '65vh',
+                    objectFit: 'contain',
+                  }}
+                />
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: '15px',
+                width: '100%',
+                textAlign: 'center',
+                fontFamily: '"Courier New", Courier, monospace',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#222',
+                letterSpacing: '1px',
+              }}>
+                {selectedCityData.name}
+              </div>
+            </div>
+          </div>
+        </Html>
+      )}
     </>
   );
 };

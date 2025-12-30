@@ -27,7 +27,8 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
 
       const targetAzimuth = (handPosition.x - 0.5) * Math.PI * 3;
 
-      const adjustedY = (handPosition.y - 0.2) * 2.0;
+      // Invert Y axis: when hand moves up (y decreases), camera looks up
+      const adjustedY = (1 - handPosition.y - 0.2) * 2.0;
       const clampedY = Math.max(0, Math.min(1, adjustedY));
 
       const minPolar = Math.PI / 6;

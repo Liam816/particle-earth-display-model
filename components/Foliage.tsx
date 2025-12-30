@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { Text, Billboard, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { TreeMode } from '../types';
@@ -40,12 +40,12 @@ const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/eart
 const vertexShader = `
   uniform float uTime;
   uniform float uProgress;
-  
+
   attribute vec3 aChaosPos;
   attribute vec3 aTargetPos;
   attribute float aRandom;
   attribute vec3 aEarthColor;
-  
+
   varying vec3 vColor;
   varying float vAlpha;
 
@@ -60,14 +60,14 @@ const vertexShader = `
     float easedProgress = cubicInOut(localProgress);
 
     vec3 newPos = mix(aChaosPos, aTargetPos, easedProgress);
-    
+
     if (easedProgress > 0.9) {
       newPos.x += sin(uTime * 0.5 + newPos.y * 2.0) * 0.01;
       newPos.z += cos(uTime * 0.3 + newPos.x * 2.0) * 0.01;
     }
 
     vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
-    
+
     float baseSize = 1.0 * aRandom + 0.6;
     gl_PointSize = baseSize * (35.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
@@ -88,7 +88,7 @@ const fragmentShader = `
 
     float glow = 1.0 - (r * 2.0);
     glow = pow(glow, 1.3);
-    
+
     vec3 finalColor = vColor * 1.15;
     gl_FragColor = vec4(finalColor, vAlpha * glow * 0.95);
   }
@@ -97,21 +97,32 @@ const fragmentShader = `
 const cityMarkerVertexShader = `
   uniform float uTime;
   uniform float uProgress;
-  
+
+  attribute vec3 aChaosPos;
   attribute vec3 aTargetPos;
   attribute float aRandom;
-  
+
   varying float vAlpha;
 
+  float cubicInOut(float t) {
+    return t < 0.5
+      ? 4.0 * t * t * t
+      : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0;
+  }
+
   void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(aTargetPos, 1.0);
-    
+    float localProgress = clamp(uProgress * 1.2 - aRandom * 0.2, 0.0, 1.0);
+    float easedProgress = cubicInOut(localProgress);
+
+    vec3 newPos = mix(aChaosPos, aTargetPos, easedProgress);
+    vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
+
     float pulse = sin(uTime * 4.0 + aRandom * 10.0) * 0.5 + 0.5;
     float baseSize = 3.0 + pulse * 2.0;
     gl_PointSize = baseSize * (40.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
-    
-    vAlpha = uProgress * (0.7 + pulse * 0.3);
+
+    vAlpha = easedProgress * (0.7 + pulse * 0.3);
   }
 `;
 
@@ -124,7 +135,7 @@ const cityMarkerFragmentShader = `
 
     float glow = 1.0 - (r * 2.0);
     glow = pow(glow, 0.8);
-    
+
     vec3 redColor = vec3(1.0, 0.2, 0.1);
     gl_FragColor = vec4(redColor, vAlpha * glow);
   }
@@ -141,7 +152,7 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
   const [hovered, setHovered] = useState(false);
-  
+
   useEffect(() => {
     document.body.style.cursor = hovered ? 'pointer' : 'auto';
     return () => {
@@ -165,12 +176,12 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
       }
     );
   }, [imagePath, cityName]);
-  
+
   if (!texture && !error) return null;
-  
+
   return (
-    <group 
-      position={[0, -0.55, 0]} 
+    <group
+      position={[0, -0.55, 0]}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.();
@@ -191,7 +202,7 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
           <meshStandardMaterial color={error ? "#550000" : "#cccccc"} />
         )}
       </mesh>
-      
+
       <mesh position={[0, 0.42, 0.015]}>
         <boxGeometry args={[0.06, 0.03, 0.03]} />
         <meshStandardMaterial color="#D4AF37" metalness={1} roughness={0.2} />
@@ -203,17 +214,80 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
 function sampleTexture(imageData: ImageData, phi: number, theta: number): THREE.Color {
   const u = theta / (2 * Math.PI);
   const v = phi / Math.PI;
-  
+
   const x = Math.floor(u * (imageData.width - 1));
   const y = Math.floor(v * (imageData.height - 1));
   const idx = (y * imageData.width + x) * 4;
-  
+
   return new THREE.Color(
     imageData.data[idx] / 255,
     imageData.data[idx + 1] / 255,
     imageData.data[idx + 2] / 255
   );
 }
+
+const CityLabel: React.FC<{
+  city: any;
+  progress: React.MutableRefObject<number>;
+  onCityClick: (cityData: { name: string; url: string }) => void;
+}> = ({ city, progress, onCityClick }) => {
+  const ref = useRef<THREE.Group>(null!);
+  const [targetPosition] = useState(() => {
+    const { theta, phi } = latLonToSpherical(city.lat, city.lon);
+    const r = EARTH_RADIUS + 0.4;
+    return new THREE.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi) + EARTH_CENTER_Y,
+      r * Math.sin(phi) * Math.sin(theta)
+    );
+  });
+  const [chaosPosition] = useState(() => {
+    const rChaos = 25 * Math.cbrt(Math.random());
+    const thetaChaos = Math.random() * 2 * Math.PI;
+    const phiChaos = Math.acos(2 * Math.random() - 1);
+    return new THREE.Vector3(
+      rChaos * Math.sin(phiChaos) * Math.cos(thetaChaos),
+      rChaos * Math.sin(phiChaos) * Math.sin(thetaChaos) + 5,
+      rChaos * Math.cos(phiChaos)
+    );
+  });
+  const [randomVal] = useState(Math.random());
+
+  useFrame(() => {
+    if (ref.current) {
+      const localProgress = Math.max(0, Math.min(1, progress.current * 1.2 - randomVal * 0.2));
+      const easedProgress = localProgress < 0.5 ? 4.0 * localProgress * localProgress * localProgress : 1.0 - Math.pow(-2.0 * localProgress + 2.0, 3.0) / 2.0;
+      ref.current.position.lerpVectors(chaosPosition, targetPosition, easedProgress);
+    }
+  });
+
+  const isNantong = city.name === 'Nantong';
+  const isShanghai = city.name === 'Shanghai';
+  const anchor = isNantong ? 'left' : isShanghai ? 'right' : 'left';
+  const offsetX = isNantong ? 0.01 : isShanghai ? -0.01 : 0;
+
+  return (
+    <group ref={ref}>
+      <Billboard follow={true}>
+        <Text
+          fontSize={0.4}
+          color="#F5E6BF"
+          anchorX={anchor}
+          anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#8B4513"
+          position={[offsetX, 0.35, 0]}
+        >
+          {city.name}
+        </Text>
+        <CityImage
+          cityName={city.name}
+          onClick={() => onCityClick({ name: city.name, url: CITY_IMAGES[city.name] })}
+        />
+      </Billboard>
+    </group>
+  );
+};
 
 function generateParticles(count: number, imageData: ImageData | null) {
   const chaos = new Float32Array(count * 3);
@@ -227,7 +301,7 @@ function generateParticles(count: number, imageData: ImageData | null) {
     const r = 25 * Math.cbrt(Math.random());
     const cTheta = Math.random() * 2 * Math.PI;
     const cPhi = Math.acos(2 * Math.random() - 1);
-    
+
     chaos[i * 3] = r * Math.sin(cPhi) * Math.cos(cTheta);
     chaos[i * 3 + 1] = r * Math.sin(cPhi) * Math.sin(cTheta) + 5;
     chaos[i * 3 + 2] = r * Math.cos(cPhi);
@@ -236,21 +310,21 @@ function generateParticles(count: number, imageData: ImageData | null) {
     const v = Math.random();
     const sphereTheta = 2 * Math.PI * u;
     const spherePhi = Math.acos(2 * v - 1);
-    
+
     target[i * 3] = radius * Math.sin(spherePhi) * Math.cos(sphereTheta);
     target[i * 3 + 1] = radius * Math.cos(spherePhi) + EARTH_CENTER_Y;
     target[i * 3 + 2] = radius * Math.sin(spherePhi) * Math.sin(sphereTheta);
 
     const random = Math.random();
     rnd[i] = random;
-    
+
     let color: THREE.Color;
     if (imageData) {
       color = sampleTexture(imageData, spherePhi, sphereTheta);
     } else {
       color = new THREE.Color(0.1, 0.3, 0.6);
     }
-    
+
     colors[i * 3] = color.r;
     colors[i * 3 + 1] = color.g;
     colors[i * 3 + 2] = color.b;
@@ -265,21 +339,30 @@ function generateParticles(count: number, imageData: ImageData | null) {
 }
 
 function generateCityMarkers() {
-  const positions = new Float32Array(CITIES.length * 3);
+  const chaosPositions = new Float32Array(CITIES.length * 3);
+  const targetPositions = new Float32Array(CITIES.length * 3);
   const randoms = new Float32Array(CITIES.length);
-  
+
   CITIES.forEach((city, i) => {
+    // Chaos position
+    const rChaos = 25 * Math.cbrt(Math.random());
+    const thetaChaos = Math.random() * 2 * Math.PI;
+    const phiChaos = Math.acos(2 * Math.random() - 1);
+    chaosPositions[i * 3] = rChaos * Math.sin(phiChaos) * Math.cos(thetaChaos);
+    chaosPositions[i * 3 + 1] = rChaos * Math.sin(phiChaos) * Math.sin(thetaChaos) + 5;
+    chaosPositions[i * 3 + 2] = rChaos * Math.cos(phiChaos);
+
+    // Target position
     const { theta, phi } = latLonToSpherical(city.lat, city.lon);
     const r = EARTH_RADIUS + 0.15;
-    
-    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    positions[i * 3 + 1] = r * Math.cos(phi) + EARTH_CENTER_Y;
-    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-    
+    targetPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    targetPositions[i * 3 + 1] = r * Math.cos(phi) + EARTH_CENTER_Y;
+    targetPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
     randoms[i] = Math.random();
   });
-  
-  return { positions, randoms };
+
+  return { chaosPositions, targetPositions, randoms };
 }
 
 export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
@@ -331,28 +414,28 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
   }), []);
 
   useFrame((state, delta) => {
+    const target = mode === TreeMode.FORMED ? 1 : 0;
+    progressRef.current = THREE.MathUtils.lerp(progressRef.current, target, delta * 1.5);
+
     if (meshRef.current) {
       const material = meshRef.current.material as THREE.ShaderMaterial;
       material.uniforms.uTime.value = state.clock.elapsedTime;
-      
-      const target = mode === TreeMode.FORMED ? 1 : 0;
-      progressRef.current = THREE.MathUtils.lerp(progressRef.current, target, delta * 1.5);
       material.uniforms.uProgress.value = progressRef.current;
-      
       if (mode === TreeMode.FORMED) {
         meshRef.current.rotation.y += delta * 0.03;
       }
     }
-    
+
     if (cityMarkersRef.current) {
       const material = cityMarkersRef.current.material as THREE.ShaderMaterial;
       material.uniforms.uTime.value = state.clock.elapsedTime;
       material.uniforms.uProgress.value = progressRef.current;
-      
-      cityMarkersRef.current.rotation.y = meshRef.current?.rotation.y || 0;
+      if (mode === TreeMode.FORMED) {
+        cityMarkersRef.current.rotation.y = meshRef.current?.rotation.y || 0;
+      }
     }
-    
-    if (cityLabelsRef.current) {
+
+    if (cityLabelsRef.current && mode === TreeMode.FORMED) {
       cityLabelsRef.current.rotation.y = meshRef.current?.rotation.y || 0;
     }
   });
@@ -406,19 +489,25 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
           blending={THREE.NormalBlending}
         />
       </points>
-      
+
       <points ref={cityMarkersRef}>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
             count={CITIES.length}
-            array={cityMarkerData.positions}
+            array={cityMarkerData.chaosPositions}
+            itemSize={3}
+          />
+          <bufferAttribute
+            attach="attributes-aChaosPos"
+            count={CITIES.length}
+            array={cityMarkerData.chaosPositions}
             itemSize={3}
           />
           <bufferAttribute
             attach="attributes-aTargetPos"
             count={CITIES.length}
-            array={cityMarkerData.positions}
+            array={cityMarkerData.targetPositions}
             itemSize={3}
           />
           <bufferAttribute
@@ -438,45 +527,23 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
           blending={THREE.AdditiveBlending}
         />
       </points>
-      
+
       <group ref={cityLabelsRef}>
-        {CITIES.map((city, i) => {
-          const { theta, phi } = latLonToSpherical(city.lat, city.lon);
-          const r = EARTH_RADIUS + 0.4;
-          const x = r * Math.sin(phi) * Math.cos(theta);
-          const y = r * Math.cos(phi) + EARTH_CENTER_Y;
-          const z = r * Math.sin(phi) * Math.sin(theta);
-          const isNantong = city.name === 'Nantong';
-          const isShanghai = city.name === 'Shanghai';
-          const anchor = isNantong ? 'left' : isShanghai ? 'right' : 'left';
-          const offsetX = isNantong ? 0.01 : isShanghai ? -0.01 : 0;
-          return (
-            <Billboard key={city.name} position={[x + offsetX, y, z]} follow={true}>
-              <Text
-                fontSize={0.4}
-                color="#F5E6BF"
-                anchorX={anchor}
-                anchorY="middle"
-                outlineWidth={0.02}
-                outlineColor="#8B4513"
-                position={[0, 0.35, 0]}
-              >
-                {city.name}
-              </Text>
-              <CityImage 
-                cityName={city.name} 
-                onClick={() => setSelectedCityData({ name: city.name, url: CITY_IMAGES[city.name] })}
-              />
-            </Billboard>
-          );
-        })}
+        {CITIES.map((city) => (
+          <CityLabel
+            key={city.name}
+            city={city}
+            progress={progressRef}
+            onCityClick={setSelectedCityData}
+          />
+        ))}
       </group>
 
       {selectedCityData && (
-        <Html 
+        <Html
           portal={{ current: document.body }}
           calculatePosition={() => [0, 0]}
-          style={{ 
+          style={{
             pointerEvents: 'none',
             position: 'fixed',
             top: 0,
@@ -517,8 +584,8 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ 
-                position: 'relative', 
+              <div style={{
+                position: 'relative',
                 overflow: 'hidden',
                 backgroundColor: '#f0f0f0',
                 display: 'flex',
@@ -543,7 +610,7 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
                 bottom: '15px',
                 width: '100%',
                 textAlign: 'center',
-                fontFamily: '"Courier New", Courier, monospace',
+                fontFamily: '\"Courier New\", Courier, monospace',
                 fontSize: '24px',
                 fontWeight: 'bold',
                 color: '#222',

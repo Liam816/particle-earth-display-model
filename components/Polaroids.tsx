@@ -207,17 +207,13 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, twoH
         r * radiusAtY * Math.sin(theta)
       );
 
-      const relativeY = 5;
-      const relativeZ = 20;
-      
-      const angle = (i / count) * Math.PI * 2;
-      const distance = 3 + Math.random() * 4;
-      const heightSpread = (Math.random() - 0.5) * 8;
-      
+      const rChaos = 25 * Math.cbrt(Math.random());
+      const thetaChaos = Math.random() * 2 * Math.PI;
+      const phiChaos = Math.acos(2 * Math.random() - 1);
       const chaosPos = new THREE.Vector3(
-        distance * Math.cos(angle) * 1.2,
-        relativeY + heightSpread,
-        relativeZ - 4 + distance * Math.sin(angle) * 0.5
+        rChaos * Math.sin(phiChaos) * Math.cos(thetaChaos),
+        rChaos * Math.sin(phiChaos) * Math.sin(thetaChaos) + 5,
+        rChaos * Math.cos(phiChaos)
       );
 
       data.push({

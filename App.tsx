@@ -1,10 +1,10 @@
-
 import React, { useState, Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Loader } from '@react-three/drei';
 import { Experience } from './components/Experience';
 import { UIOverlay } from './components/UIOverlay';
 import { GestureController } from './components/GestureController';
+import { PhotoCarousel } from './components/PhotoCarousel';
 import { TreeMode } from './types';
 
 // Simple Error Boundary to catch 3D resource loading errors (like textures)
@@ -30,7 +30,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
           <div>
             <h2 className="text-2xl mb-2">Something went wrong</h2>
             <p className="opacity-70">A resource failed to load (likely a missing image). Check the console for details.</p>
-            <button 
+            <button
               onClick={() => this.setState({ hasError: false })}
               className="mt-4 px-4 py-2 border border-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-colors"
             >
@@ -44,6 +44,9 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     return this.props.children;
   }
 }
+
+// No default photos - user uploads their own for the Polaroids on the tree
+const DEFAULT_PHOTOS: string[] = [];
 
 export default function App() {
   const [mode, setMode] = useState<TreeMode>(TreeMode.FORMED);
@@ -127,27 +130,34 @@ export default function App() {
           shadows
         >
           <Suspense fallback={null}>
-            <Experience mode={mode} handPosition={handPosition} uploadedPhotos={uploadedPhotos} twoHandsDetected={twoHandsDetected} onClosestPhotoChange={handleClosestPhotoChange} />
+            <Experience
+              mode={mode}
+              handPosition={handPosition}
+              uploadedPhotos={uploadedPhotos}
+              defaultPhotos={DEFAULT_PHOTOS}
+              twoHandsDetected={twoHandsDetected}
+              onClosestPhotoChange={handleClosestPhotoChange}
+            />
           </Suspense>
         </Canvas>
       </ErrorBoundary>
-      
-      <Loader 
-        containerStyles={{ background: '#000' }} 
+
+      <Loader
+        containerStyles={{ background: '#000' }}
         innerStyles={{ width: '300px', height: '10px', background: '#333' }}
         barStyles={{ background: '#D4AF37', height: '10px' }}
         dataStyles={{ color: '#D4AF37', fontFamily: 'Cinzel' }}
       />
-      
-      <UIOverlay 
-        mode={mode} 
-        onToggle={toggleMode} 
-        onPhotosUpload={handlePhotosUpload} 
+
+      <UIOverlay
+        mode={mode}
+        onToggle={toggleMode}
+        onPhotosUpload={handlePhotosUpload}
         hasPhotos={uploadedPhotos.length > 0}
         uploadedPhotos={uploadedPhotos}
         isSharedView={isSharedView}
       />
-      
+
       {/* Loading indicator for shared photos */}
       {isLoadingShare && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
@@ -156,30 +166,33 @@ export default function App() {
           </div>
         </div>
       )}
-      
+
       {/* Gesture Control Module */}
       <GestureController currentMode={mode} onModeChange={setMode} onHandPosition={handleHandPosition} onTwoHandsDetected={handleTwoHandsDetected} />
-      
+
+      {/* Photo Carousel - Shows city photos in CHAOS mode after explosion */}
+      <PhotoCarousel mode={mode} />
+
       {/* Photo Overlay - Shows when two hands detected */}
       {closestPhoto && (
         <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none animate-fade-in">
           {/* Semi-transparent backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-          
+
           {/* Polaroid frame with photo */}
           <div className="relative z-50 transform transition-all duration-500 ease-out animate-scale-in">
             {/* Polaroid container */}
             <div className="bg-white p-4 pb-8 shadow-2xl" style={{ width: '60vmin', maxWidth: '600px' }}>
               {/* Gold clip at top */}
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-6 bg-gradient-to-b from-[#D4AF37] to-[#C5A028] rounded-sm shadow-lg"></div>
-              
+
               {/* Photo */}
-              <img 
-                src={closestPhoto} 
-                alt="Selected Memory" 
+              <img
+                src={closestPhoto}
+                alt="Selected Memory"
                 className="w-full aspect-square object-cover"
               />
-              
+
               {/* Text label */}
               <div className="text-center mt-4 font-serif text-gray-700 text-lg">
                 Happy Memories

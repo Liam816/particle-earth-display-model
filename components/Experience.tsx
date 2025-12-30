@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Environment, OrbitControls, ContactShadows } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
@@ -13,54 +12,46 @@ interface ExperienceProps {
   mode: TreeMode;
   handPosition: { x: number; y: number; detected: boolean };
   uploadedPhotos: string[];
+  defaultPhotos: string[];
   twoHandsDetected: boolean;
   onClosestPhotoChange?: (photoUrl: string | null) => void;
 }
 
-export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, twoHandsDetected, onClosestPhotoChange }) => {
+export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uploadedPhotos, defaultPhotos, twoHandsDetected, onClosestPhotoChange }) => {
   const controlsRef = useRef<any>(null);
 
   // Update camera rotation based on hand position
   useFrame((_, delta) => {
-    if (controlsRef.current && handPosition.detected) {
+    if (controlsRef.current && handPosition.detected && mode !== TreeMode.CHAOS) {
       const controls = controlsRef.current;
-      
-      // Map hand position to spherical coordinates
-      // x: 0 (left) to 1 (right) -> azimuthal angle (horizontal rotation)
-      // y: 0 (top) to 1 (bottom) -> polar angle (vertical tilt)
-      
+
       const targetAzimuth = (handPosition.x - 0.5) * Math.PI * 3;
-      
+
       const adjustedY = (handPosition.y - 0.2) * 2.0;
       const clampedY = Math.max(0, Math.min(1, adjustedY));
-      
+
       const minPolar = Math.PI / 6;
       const maxPolar = Math.PI / 1.5;
       const targetPolar = minPolar + clampedY * (maxPolar - minPolar);
-      
-      // Get current angles
+
       const currentAzimuth = controls.getAzimuthalAngle();
       const currentPolar = controls.getPolarAngle();
-      
-      // Calculate angle differences (handle wrapping for azimuth)
+
       let azimuthDiff = targetAzimuth - currentAzimuth;
       if (azimuthDiff > Math.PI) azimuthDiff -= Math.PI * 2;
       if (azimuthDiff < -Math.PI) azimuthDiff += Math.PI * 2;
-      
-      // Smoothly interpolate angles
-      const lerpSpeed = 8; // Increased from 5 to 8 for faster response
+
+      const lerpSpeed = 8;
       const newAzimuth = currentAzimuth + azimuthDiff * delta * lerpSpeed;
       const newPolar = currentPolar + (targetPolar - currentPolar) * delta * lerpSpeed;
-      
-      // Calculate new camera position in spherical coordinates
+
       const radius = controls.getDistance();
       const targetY = 1;
-      
+
       const x = radius * Math.sin(newPolar) * Math.sin(newAzimuth);
       const y = targetY + radius * Math.cos(newPolar);
       const z = radius * Math.sin(newPolar) * Math.cos(newAzimuth);
-      
-      // Update camera position and target
+
       controls.object.position.set(x, y, z);
       controls.target.set(0, 1, 0);
       controls.update();
@@ -68,10 +59,10 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
   });
   return (
     <>
-      <OrbitControls 
+      <OrbitControls
         ref={controlsRef}
-        enablePan={false} 
-        minPolarAngle={Math.PI / 6} 
+        enablePan={false}
+        minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 1.5}
         minDistance={12}
         maxDistance={35}
@@ -81,39 +72,44 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         target={[0, 1, 0]}
       />
 
-      {/* Lighting Setup for Maximum Luxury */}
       <Environment preset="lobby" background={false} blur={0.8} />
-      
+
       <ambientLight intensity={0.2} color="#004422" />
-      <spotLight 
-        position={[10, 20, 10]} 
-        angle={0.2} 
-        penumbra={1} 
-        intensity={2} 
-        color="#fff5cc" 
-        castShadow 
+      <spotLight
+        position={[10, 20, 10]}
+        angle={0.2}
+        penumbra={1}
+        intensity={2}
+        color="#fff5cc"
+        castShadow
       />
       <pointLight position={[-10, 5, -10]} intensity={1} color="#D4AF37" />
 
       <group position={[0, -5, 0]}>
         <Foliage mode={mode} count={1000000} />
         <Ornaments mode={mode} count={600} />
-        <Polaroids mode={mode} uploadedPhotos={uploadedPhotos} twoHandsDetected={twoHandsDetected} onClosestPhotoChange={onClosestPhotoChange} />
-        
-        <ContactShadows 
-          opacity={0.5} 
-          scale={40} 
-          blur={2} 
-          far={6} 
-          color="#000000" 
+        <Polaroids
+          mode={mode}
+          uploadedPhotos={uploadedPhotos}
+          defaultPhotos={defaultPhotos}
+          twoHandsDetected={twoHandsDetected}
+          onClosestPhotoChange={onClosestPhotoChange}
+        />
+
+        <ContactShadows
+          opacity={0.5}
+          scale={40}
+          blur={2}
+          far={6}
+          color="#000000"
         />
       </group>
 
       <EffectComposer enableNormalPass={false}>
-        <Bloom 
-          luminanceThreshold={0.8} 
-          mipmapBlur 
-          intensity={1.5} 
+        <Bloom
+          luminanceThreshold={0.8}
+          mipmapBlur
+          intensity={1.5}
           radius={0.6}
         />
         <Vignette eskil={false} offset={0.1} darkness={0.7} />

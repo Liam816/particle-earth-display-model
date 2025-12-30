@@ -22,15 +22,15 @@ const CITIES = [
 ];
 
 const CITY_IMAGES: Record<string, string> = {
-  'Edinburgh': '/imgs/edinburgh.jpg',
-  'Tokyo': '/imgs/tokyo.jpg',
-  'Seoul': '/imgs/seoul.jpg',
-  'Manila': '/imgs/manila.jpg',
-  'Kuala Lumpur': '/imgs/kuala-lumpur.jpg',
-  'Bangkok': '/imgs/bangkok.jpg',
-  'Shanghai': '/imgs/shanghai.jpg',
-  'Nantong': '/imgs/nantong.jpg',
-  'Guangzhou': '/imgs/guangzhou.jpg',
+  'Edinburgh': '/imgs/Edinburgh.jpg',
+  'Tokyo': '/imgs/Tokyo.jpg',
+  'Seoul': '/imgs/Seoul.jpg',
+  'Manila': '/imgs/Manila.jpg',
+  'Kuala Lumpur': '/imgs/Kuala-Lumpur.jpg',
+  'Bangkok': '/imgs/Bangkok.jpg',
+  'Shanghai': '/imgs/Shanghai.jpg',
+  'Nantong': '/imgs/Nantong.jpg',
+  'Guangzhou': '/imgs/Guangzhou.jpg',
 };
 
 const EARTH_RADIUS = 6;

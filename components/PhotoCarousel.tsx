@@ -59,7 +59,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         setFlyProgress(0);
         setOffset(0);
         lastTimeRef.current = performance.now();
-      }, 2000);
+      }, 1000);  // 过渡时间
     } else {
       setStage(CarouselStage.HIDDEN);
       setOffset(0);

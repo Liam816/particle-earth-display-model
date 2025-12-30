@@ -14,6 +14,128 @@ const CITY_PHOTOS = [
   { name: 'Guangzhou', url: '/imgs/Guangzhou.jpg' },
 ];
 
+// Cake emojis for falling effect
+// const CAKE_EMOJIS = ['🎂', '🍰', '🧁', '🎁', '✨', '🎉'];
+const CAKE_EMOJIS = ['🎂', '🧁', '🎁', '✨', '🎉'];
+
+interface FallingCake {
+  id: number;
+  emoji: string;
+  x: number;
+  y: number;
+  speed: number;
+  size: number;
+  rotation: number;
+  rotationSpeed: number;
+  opacity: number;
+  swaySpeed: number;
+  swayAmount: number;
+}
+
+// Falling cakes component
+const FallingCakes: React.FC<{ isActive: boolean }> = ({ isActive }) => {
+  const [cakes, setCakes] = useState<FallingCake[]>([]);
+  const animationRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  const cakeIdRef = useRef(0);
+
+  // Generate a new cake
+  const createCake = (): FallingCake => {
+    const emoji = CAKE_EMOJIS[Math.floor(Math.random() * CAKE_EMOJIS.length)];
+    return {
+      id: cakeIdRef.current++,
+      emoji,
+      x: Math.random() * 100, // percentage
+      y: -10, // start above screen
+      speed: 15 + Math.random() * 20, // pixels per second (slower)
+      size: 20 + Math.random() * 20, // font size
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 60, // degrees per second (slower rotation)
+      opacity: 0.6 + Math.random() * 0.4,
+      swaySpeed: 1 + Math.random() * 2,
+      swayAmount: 10 + Math.random() * 20,
+    };
+  };
+
+  useEffect(() => {
+    if (!isActive) {
+      setCakes([]);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      return;
+    }
+
+    // Initialize with more cakes
+    const initialCakes: FallingCake[] = [];
+    for (let i = 0; i < 30; i++) {
+      const cake = createCake();
+      cake.y = Math.random() * 100; // Spread across screen initially
+      initialCakes.push(cake);
+    }
+    setCakes(initialCakes);
+    lastTimeRef.current = performance.now();
+
+    let lastCakeTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const deltaTime = (currentTime - lastTimeRef.current) / 1000;
+      lastTimeRef.current = currentTime;
+
+      // Add new cakes more frequently
+      if (currentTime - lastCakeTime > 250) { // New cake every 250ms
+        setCakes(prev => [...prev, createCake()]);
+        lastCakeTime = currentTime;
+      }
+
+      // Update cake positions
+      setCakes(prev => {
+        return prev
+          .map(cake => ({
+            ...cake,
+            y: cake.y + cake.speed * deltaTime,
+            rotation: cake.rotation + cake.rotationSpeed * deltaTime,
+          }))
+          .filter(cake => cake.y < 110); // Remove cakes that fell off screen
+      });
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isActive]);
+
+  if (!isActive) return null;
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {cakes.map(cake => (
+        <div
+          key={cake.id}
+          className="absolute"
+          style={{
+            left: `${cake.x}%`,
+            top: `${cake.y}%`,
+            fontSize: `${cake.size}px`,
+            transform: `rotate(${cake.rotation}deg) translateX(${Math.sin(cake.y * 0.05 * cake.swaySpeed) * cake.swayAmount}px)`,
+            opacity: cake.opacity,
+            transition: 'none',
+          }}
+        >
+          {cake.emoji}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 enum CarouselStage {
   HIDDEN,
   FLYING_IN,
@@ -226,6 +348,9 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
       >
         {renderPhotoStrip(false)}
       </div>
+
+      {/* Falling cakes effect */}
+      <FallingCakes isActive={stage === CarouselStage.SCROLLING || stage === CarouselStage.FLYING_IN} />
     </div>
   );
 };

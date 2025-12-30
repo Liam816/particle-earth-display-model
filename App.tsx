@@ -125,7 +125,17 @@ export default function App() {
       <ErrorBoundary>
         <Canvas
           dpr={[1, 2]}
-          camera={{ position: [0, 4, 20], fov: 45 }}
+          camera={{
+            // Position camera to face Shanghai (lon: 121.47°)
+            // Camera at radius 20, directly facing Shanghai longitude
+            // 虽然上海经度是121.47°，但为了更好的视觉效果，我们选择160°
+            position: [
+              20 * Math.sin(160.0 * Math.PI / 180),
+              6,
+              20 * Math.cos(160.0 * Math.PI / 180)
+            ],
+            fov: 45
+          }}
           gl={{ antialias: false, stencil: false, alpha: false }}
           shadows
         >

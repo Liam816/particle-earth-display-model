@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState, Suspense, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Loader } from '@react-three/drei';
 import { Experience } from './components/Experience';
@@ -56,6 +56,61 @@ export default function App() {
   const [isSharedView, setIsSharedView] = useState(false);
   const [twoHandsDetected, setTwoHandsDetected] = useState(false);
   const [closestPhoto, setClosestPhoto] = useState<string | null>(null);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasTriedMusicPlay = useRef(false);
+
+  // Initialize audio
+  useEffect(() => {
+    audioRef.current = new Audio('/audio/ai_hbd_rb_style_song_v2_trim.m4a');
+    audioRef.current.loop = true;
+    audioRef.current.volume = 0.5;
+
+    // Set up interaction listeners for first play
+    const handleFirstInteraction = () => {
+      if (audioRef.current && !hasTriedMusicPlay.current) {
+        hasTriedMusicPlay.current = true;
+        audioRef.current.play().then(() => {
+          setIsMusicPlaying(true);
+        }).catch(console.error);
+      }
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+    };
+    document.addEventListener('click', handleFirstInteraction);
+    document.addEventListener('touchstart', handleFirstInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Trigger music when hand gesture is detected
+  useEffect(() => {
+    if (handPosition.detected && audioRef.current && !hasTriedMusicPlay.current) {
+      hasTriedMusicPlay.current = true;
+      audioRef.current.play().then(() => {
+        setIsMusicPlaying(true);
+      }).catch(console.error);
+    }
+  }, [handPosition.detected]);
+
+  const toggleMusic = () => {
+    if (audioRef.current) {
+      if (isMusicPlaying) {
+        audioRef.current.pause();
+        setIsMusicPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsMusicPlaying(true);
+      }
+    }
+  };
 
   // Check for share parameter in URL on mount
   useEffect(() => {
@@ -211,6 +266,15 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Music Toggle Button */}
+      <button
+        onClick={toggleMusic}
+        className="fixed bottom-12 right-12 z-50 w-12 h-12 rounded-full border-2 border-[#D4AF37] bg-black/70 backdrop-blur-md flex items-center justify-center hover:bg-[#D4AF37]/20 transition-all duration-300"
+        title={isMusicPlaying ? '暂停音乐' : '播放音乐'}
+      >
+        <span className="text-xl">{isMusicPlaying ? '🔊' : '🔇'}</span>
+      </button>
     </div>
   );
 }

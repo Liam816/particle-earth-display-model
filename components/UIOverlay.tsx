@@ -255,7 +255,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({ mode, onToggle, onPhotosUp
         {!isSharedView && (
           <>
             {/* Upload Button - Show when no photos */}
-            {!hasPhotos && (
+            {false && !hasPhotos && (
               <button
                 onClick={handleUploadClick}
                 className="group px-6 py-3 border-2 border-[#D4AF37] bg-black/70 backdrop-blur-md overflow-hidden transition-all duration-500 hover:shadow-[0_0_30px_#D4AF37] hover:border-[#fff] hover:bg-[#D4AF37]/20"

@@ -2,16 +2,54 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TreeMode } from '../types';
 
 // City photos - same as in Foliage.tsx
+// const CITY_PHOTOS = [
+//   { name: 'Edinburgh', url: '/imgs/Edinburgh.jpg' },
+//   { name: 'Tokyo', url: '/imgs/Tokyo.jpg' },
+//   { name: 'Seoul', url: '/imgs/Seoul.jpg' },
+//   { name: 'Manila', url: '/imgs/Manila.jpg' },
+//   { name: 'Kuala Lumpur', url: '/imgs/Kuala-Lumpur.jpg' },
+//   { name: 'Bangkok', url: '/imgs/Bangkok.jpg' },
+//   { name: 'Shanghai', url: '/imgs/Shanghai.jpg' },
+//   { name: 'Nantong', url: '/imgs/Nantong.jpg' },
+//   { name: 'Guangzhou', url: '/imgs/Guangzhou.jpg' },
+// ];
+// const CITY_PHOTOS = [
+//   { name: '1', url: '/imgs/grace_photos/1.jpg' },
+//   { name: '2', url: '/imgs/grace_photos/2.jpg' },
+//   { name: '3', url: '/imgs/grace_photos/3.jpg' },
+//   { name: '4', url: '/imgs/grace_photos/4.jpg' },
+//   { name: '5', url: '/imgs/grace_photos/5.jpg' },
+//   { name: '6', url: '/imgs/grace_photos/6.jpg' },
+//   { name: '7', url: '/imgs/grace_photos/7.jpg' },
+//   { name: '8', url: '/imgs/grace_photos/8.jpg' },
+//   { name: '9', url: '/imgs/grace_photos/9.jpg' },
+//   {  name: '10', url: '/imgs/grace_photos/10.jpg' },
+//   {  name: '11', url: '/imgs/grace_photos/11.jpg' },
+//   {  name: '12', url: '/imgs/grace_photos/12.jpg' },
+//   {  name: '13', url: '/imgs/grace_photos/13.jpg' },
+//   {  name: '14', url: '/imgs/grace_photos/14.jpg' },
+//   {  name: '15', url: '/imgs/grace_photos/15.jpg' },
+//   {  name: '16', url: '/imgs/grace_photos/16.jpg' },
+//   {  name: '17', url: '/imgs/grace_photos/17.jpg' }
+// ];
 const CITY_PHOTOS = [
-  { name: 'Edinburgh', url: '/imgs/Edinburgh.jpg' },
-  { name: 'Tokyo', url: '/imgs/Tokyo.jpg' },
-  { name: 'Seoul', url: '/imgs/Seoul.jpg' },
-  { name: 'Manila', url: '/imgs/Manila.jpg' },
-  { name: 'Kuala Lumpur', url: '/imgs/Kuala-Lumpur.jpg' },
-  { name: 'Bangkok', url: '/imgs/Bangkok.jpg' },
-  { name: 'Shanghai', url: '/imgs/Shanghai.jpg' },
-  { name: 'Nantong', url: '/imgs/Nantong.jpg' },
-  { name: 'Guangzhou', url: '/imgs/Guangzhou.jpg' },
+  { name: '', url: '/imgs/grace_photos/1.jpg' },
+  { name: '', url: '/imgs/grace_photos/2.jpg' },
+  { name: '', url: '/imgs/grace_photos/3.jpg' },
+  { name: '', url: '/imgs/grace_photos/4.jpg' },
+  { name: '', url: '/imgs/grace_photos/5.jpg' },
+  { name: '', url: '/imgs/grace_photos/6.jpg' },
+  { name: '', url: '/imgs/grace_photos/7.jpg' },
+  { name: '', url: '/imgs/grace_photos/8.jpg' },
+  { name: '', url: '/imgs/grace_photos/9.jpg' },
+  {  name: '', url: '/imgs/grace_photos/10.jpg' },
+  {  name: '', url: '/imgs/grace_photos/11.jpg' },
+  {  name: '', url: '/imgs/grace_photos/12.jpg' },
+  {  name: '', url: '/imgs/grace_photos/13.jpg' },
+  {  name: '', url: '/imgs/grace_photos/14.jpg' },
+  {  name: '', url: '/imgs/grace_photos/15.jpg' },
+  {  name: '', url: '/imgs/grace_photos/16.jpg' },
+  {  name: '', url: '/imgs/grace_photos/17.jpg' }
 ];
 
 // Cake emojis for falling effect

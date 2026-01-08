@@ -189,9 +189,10 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
     >
+      {/* Polaroid white frame - use meshBasicMaterial to ignore lighting */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[0.72, 0.9, 0.012]} />
-        <meshStandardMaterial color="#fdfdfd" roughness={0.8} />
+        <meshBasicMaterial color="#ffffff" />
       </mesh>
 
       <mesh position={[0, 0.09, 0.015]}>
@@ -199,13 +200,14 @@ const CityImage: React.FC<{ cityName: string; onClick?: () => void }> = ({ cityN
         {texture && !error ? (
           <meshBasicMaterial map={texture} />
         ) : (
-          <meshStandardMaterial color={error ? "#550000" : "#cccccc"} />
+          <meshBasicMaterial color={error ? "#550000" : "#cccccc"} />
         )}
       </mesh>
 
+      {/* Gold clip */}
       <mesh position={[0, 0.42, 0.015]}>
         <boxGeometry args={[0.06, 0.03, 0.03]} />
-        <meshStandardMaterial color="#D4AF37" metalness={1} roughness={0.2} />
+        <meshBasicMaterial color="#D4AF37" />
       </mesh>
     </group>
   );

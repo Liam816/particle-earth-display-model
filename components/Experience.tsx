@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Environment, OrbitControls, ContactShadows } from '@react-three/drei';
+import { OrbitControls, ContactShadows } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import { useFrame } from '@react-three/fiber';
@@ -73,18 +73,23 @@ export const Experience: React.FC<ExperienceProps> = ({ mode, handPosition, uplo
         target={[0, 1, 0]}
       />
 
-      <Environment preset="lobby" background={false} blur={0.8} />
+      {/* Removed Environment preset to avoid external HDR loading issues */}
+      {/* Use enhanced lighting instead */}
 
-      <ambientLight intensity={0.2} color="#004422" />
+      <ambientLight intensity={1.2} color="#ffffff" />
+      <hemisphereLight args={['#ffffff', '#ffffff', 0.5]} />
+      <directionalLight position={[5, 10, 5]} intensity={1.5} color="#ffffff" />
+      <directionalLight position={[-5, 10, -5]} intensity={1.0} color="#ffffff" />
       <spotLight
         position={[10, 20, 10]}
-        angle={0.2}
+        angle={0.3}
         penumbra={1}
-        intensity={2}
-        color="#fff5cc"
+        intensity={2.5}
+        color="#ffffff"
         castShadow
       />
-      <pointLight position={[-10, 5, -10]} intensity={1} color="#D4AF37" />
+      <pointLight position={[-10, 5, -10]} intensity={1.5} color="#ffffff" />
+      <pointLight position={[10, 5, 10]} intensity={1.5} color="#ffffff" />
 
       <group position={[0, -5, 0]}>
         <Foliage mode={mode} count={1000000} />

@@ -263,29 +263,39 @@ const CityLabel: React.FC<{
     }
   });
 
-  const isNantong = city.name === 'Nantong';
-  const isShanghai = city.name === 'Shanghai';
-  const anchor = isNantong ? 'left' : isShanghai ? 'right' : 'left';
-  const offsetX = isNantong ? 0.01 : isShanghai ? -0.01 : 0;
+  // Hack: Tokyo and Shanghai labels on the left side
+  const isLeftSide = city.name === 'Tokyo' || city.name === 'Shanghai';
+  const textX = isLeftSide ? -0.45 : 0.45;
+  const textAnchor = isLeftSide ? 'right' : 'left';
+
+  // Hack: Offset Shanghai photo left, Nantong photo right to avoid overlap
+  let photoOffsetX = 0;
+  let photoOffsetY = 0;
+  let textOffsetY = 0;
+  if (city.name === 'Shanghai') { photoOffsetX = -0.5; photoOffsetY = -0.3; }
+  if (city.name === 'Nantong') photoOffsetX = 0.5;
+  if (city.name === 'Seoul') textOffsetY = 0.15;
 
   return (
     <group ref={ref}>
       <Billboard follow={true}>
+        <group position={[photoOffsetX, photoOffsetY, 0]}>
+          <CityImage
+            cityName={city.name}
+            onClick={() => onCityClick({ name: city.name, url: CITY_IMAGES[city.name] })}
+          />
+        </group>
         <Text
-          fontSize={0.4}
+          fontSize={0.35}
           color="#F5E6BF"
-          anchorX={anchor}
+          anchorX={textAnchor}
           anchorY="middle"
           outlineWidth={0.02}
           outlineColor="#8B4513"
-          position={[offsetX, 0.35, 0]}
+          position={[textX + photoOffsetX, -0.55 + photoOffsetY + textOffsetY, 0]}
         >
           {city.name}
         </Text>
-        <CityImage
-          cityName={city.name}
-          onClick={() => onCityClick({ name: city.name, url: CITY_IMAGES[city.name] })}
-        />
       </Billboard>
     </group>
   );

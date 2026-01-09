@@ -39,17 +39,17 @@ const CITY_PHOTOS = [
   { name: '', url: '/imgs/grace_photos/4.jpg' },
   { name: '', url: '/imgs/grace_photos/5.jpg' },
   { name: '', url: '/imgs/grace_photos/6.jpg' },
-  { name: '', url: '/imgs/grace_photos/7.jpg' },
-  { name: '', url: '/imgs/grace_photos/8.jpg' },
-  { name: '', url: '/imgs/grace_photos/9.jpg' },
-  {  name: '', url: '/imgs/grace_photos/10.jpg' },
-  {  name: '', url: '/imgs/grace_photos/11.jpg' },
-  {  name: '', url: '/imgs/grace_photos/12.jpg' },
-  {  name: '', url: '/imgs/grace_photos/13.jpg' },
-  {  name: '', url: '/imgs/grace_photos/14.jpg' },
-  {  name: '', url: '/imgs/grace_photos/15.jpg' },
-  {  name: '', url: '/imgs/grace_photos/16.jpg' },
-  {  name: '', url: '/imgs/grace_photos/17.jpg' }
+  // { name: '', url: '/imgs/grace_photos/7.jpg' },
+  // { name: '', url: '/imgs/grace_photos/8.jpg' },
+  // { name: '', url: '/imgs/grace_photos/9.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/10.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/11.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/12.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/13.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/14.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/15.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/16.jpg' },
+  // {  name: '', url: '/imgs/grace_photos/17.jpg' }
 ];
 
 // Cake emojis for falling effect

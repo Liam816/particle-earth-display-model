@@ -258,7 +258,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
           }
           return newProgress;
         });
-      } else if (stage === CarouselStage.SCROLLING && !isPaused && !hoveredPhotoKey) {
+      } else if (stage === CarouselStage.SCROLLING && !isPaused && !hoveredPhotoKey && !selectedPhotoUrl) {
         const scrollSpeed = 40;
         setOffset((prev) => {
           // Use modulo for true infinite loop
@@ -276,7 +276,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [stage, singleSetWidth, isPaused, hoveredPhotoKey]);
+  }, [stage, singleSetWidth, isPaused, hoveredPhotoKey, selectedPhotoUrl]);
 
   if (stage === CarouselStage.HIDDEN) return null;
 
@@ -431,9 +431,9 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
             </button>
 
             {/* Instructions */}
-            <div className="text-center mt-4 text-gray-600 text-sm">
+            {/* <div className="text-center mt-4 text-gray-600 text-sm">
               点击背景或按钮关闭
-            </div>
+            </div> */}
           </div>
         </div>
       )}

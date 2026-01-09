@@ -199,6 +199,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const photoSpacing = 40;
   const totalPhotoWidth = photoWidth + photoSpacing;
   const singleSetWidth = CITY_PHOTOS.length * totalPhotoWidth;
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
 
   // Generate random starting positions for fly-in animation
   const randomPositions = useMemo(() => {
@@ -220,7 +221,9 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
       delayTimer = window.setTimeout(() => {
         setStage(CarouselStage.FLYING_IN);
         setFlyProgress(0);
-        setOffset(0);
+        // Start with first photo at the center of screen
+        const initialOffset = singleSetWidth - screenWidth / 2 + photoWidth / 2;
+        setOffset(initialOffset);
         lastTimeRef.current = performance.now();
       }, 1000);  // 过渡时间
     } else {
@@ -288,7 +291,6 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const backdropOpacity = stage === CarouselStage.FLYING_IN ? flyProgress * 0.5 : 0.5;
 
   // Calculate how many photos we need to render to fill the screen plus buffer
-  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
   const visibleCount = Math.ceil(screenWidth / totalPhotoWidth) + 4; // Extra buffer
 
   // Generate the visible photos array with proper indices for infinite scroll

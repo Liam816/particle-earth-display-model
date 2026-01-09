@@ -195,8 +195,11 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const [hoveredPhotoKey, setHoveredPhotoKey] = useState<string | null>(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
   const [isSpeedBoost, setIsSpeedBoost] = useState(false); // Track if left arrow key is pressed
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(0);
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const preloadedImagesRef = useRef<Set<string>>(new Set());
 
   // Photo dimensions and spacing
   const photoWidth = 360;
@@ -217,11 +220,45 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
     }));
   }, [totalPhotoWidth]);
 
+  // Preload all photos when entering CHAOS mode
+  useEffect(() => {
+    if (mode !== TreeMode.CHAOS) return;
+
+    // Skip if already loading or loaded
+    if (isLoading || preloadedImagesRef.current.size === CITY_PHOTOS.length) return;
+
+    setIsLoading(true);
+    setLoadedCount(0);
+
+    const loadImage = (url: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          preloadedImagesRef.current.add(url);
+          setLoadedCount(prev => prev + 1);
+          resolve();
+        };
+        img.onerror = () => {
+          console.warn(`Failed to preload image: ${url}`);
+          // Still count as loaded to not block the carousel
+          setLoadedCount(prev => prev + 1);
+          resolve();
+        };
+        img.src = url;
+      });
+    };
+
+    Promise.all(CITY_PHOTOS.map(photo => loadImage(photo.url)))
+      .then(() => {
+        setIsLoading(false);
+      });
+  }, [mode]);
+
   // Start carousel sequence after entering CHAOS mode
   useEffect(() => {
     let delayTimer: number | null = null;
 
-    if (mode === TreeMode.CHAOS) {
+    if (mode === TreeMode.CHAOS && !isLoading) {
       delayTimer = window.setTimeout(() => {
         setStage(CarouselStage.FLYING_IN);
         setFlyProgress(0);
@@ -230,7 +267,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         setOffset(initialOffset);
         lastTimeRef.current = performance.now();
       }, 1000);  // 过渡时间
-    } else {
+    } else if (mode !== TreeMode.CHAOS) {
       setStage(CarouselStage.HIDDEN);
       setOffset(0);
       setFlyProgress(0);
@@ -246,7 +283,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [mode]);
+  }, [mode, isLoading, singleSetWidth, screenWidth, photoWidth]);
 
   // Keyboard event listener for speed boost (left arrow key)
   useEffect(() => {
@@ -310,6 +347,26 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   }, [stage, singleSetWidth, isPaused, hoveredPhotoKey, selectedPhotoUrl, isSpeedBoost]);
 
   if (stage === CarouselStage.HIDDEN) return null;
+
+  // Show loading indicator while preloading
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50">
+        <div className="text-center">
+          <div className="text-white text-2xl mb-4">Loading photos...</div>
+          <div className="text-white text-lg">
+            {loadedCount} / {CITY_PHOTOS.length}
+          </div>
+          <div className="w-64 h-2 bg-gray-700 rounded-full mt-4 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-yellow-400 to-yellow-600 transition-all duration-300"
+              style={{ width: `${(loadedCount / CITY_PHOTOS.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Easing function for smooth animation
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);

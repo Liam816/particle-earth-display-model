@@ -352,11 +352,13 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
           >
             <div className={`bg-white p-3 pb-10 shadow-2xl relative transition-all duration-200 ${isHovered ? 'scale-110 shadow-[0_0_30px_rgba(212,175,55,0.5)]' : ''}`}>
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-4 bg-gradient-to-b from-[#D4AF37] to-[#C5A028] rounded-sm shadow-lg z-10"></div>
-              <img
-                src={photo.url}
-                alt={photo.name}
-                className="w-full aspect-square object-cover"
-              />
+              <div className="w-full aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+                <img
+                  src={photo.url}
+                  alt={photo.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
               <div className="text-center mt-3 font-serif text-gray-700 text-base">
                 {photo.name}
               </div>

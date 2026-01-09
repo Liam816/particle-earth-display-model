@@ -59,6 +59,11 @@ const CITY_PHOTOS = [
 // const CAKE_EMOJIS = ['🎂', '🍰', '🧁', '🎁', '✨', '🎉'];
 const CAKE_EMOJIS = ['🎂', '🧁', '🎁', '✨', '🎉'];
 
+// Configuration: Enable/disable photo preloading
+// Set to false to use lazy loading (load photos as they appear)
+// Set to true to preload all photos before starting carousel
+const ENABLE_PRELOAD = false;
+
 interface FallingCake {
   id: number;
   emoji: string;
@@ -222,6 +227,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
 
   // Preload all photos when entering CHAOS mode
   useEffect(() => {
+    if (!ENABLE_PRELOAD) return; // Skip preloading if disabled
     if (mode !== TreeMode.CHAOS) return;
 
     // Skip if already loading or loaded
@@ -258,7 +264,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   useEffect(() => {
     let delayTimer: number | null = null;
 
-    if (mode === TreeMode.CHAOS && !isLoading) {
+    if (mode === TreeMode.CHAOS && (!ENABLE_PRELOAD || !isLoading)) {
       delayTimer = window.setTimeout(() => {
         setStage(CarouselStage.FLYING_IN);
         setFlyProgress(0);

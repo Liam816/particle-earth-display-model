@@ -33,6 +33,18 @@ const CITY_IMAGES: Record<string, string> = {
   'Guangzhou': '/imgs/Guangzhou.jpg',
 };
 
+const CITY_DISPLAY_NAMES: Record<string, string> = {
+  'Edinburgh': 'Stuart',
+  'Tokyo': 'Kenichi',
+  'Seoul': 'Seth',
+  'Manila': 'Leo',
+  'Kuala Lumpur': 'Arvin',
+  'Bangkok': 'Guitar',
+  'Shanghai': 'Jojo',
+  'Nantong': 'Diego',
+  'Guangzhou': 'Jon',
+};
+
 const EARTH_RADIUS = 6;
 const EARTH_CENTER_Y = 6;
 const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg';
@@ -628,7 +640,7 @@ export const Foliage: React.FC<FoliageProps> = ({ mode, count }) => {
                 color: '#222',
                 letterSpacing: '1px',
               }}>
-                {selectedCityData.name}
+                {CITY_DISPLAY_NAMES[selectedCityData.name]}
               </div>
             </div>
           </div>

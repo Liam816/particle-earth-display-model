@@ -290,7 +290,7 @@ export const GestureController: React.FC<GestureControllerProps> = ({ onModeChan
 
       
       {/* Camera Preview Frame */}
-      <div className="relative w-[12vw] h-[9vw] border-2 border-[#D4AF37] rounded-lg overflow-hidden shadow-[0_0_20px_rgba(212,175,55,0.3)] bg-black">
+      <div className="relative w-[6vw] h-[4.5vw] border-2 border-[#D4AF37] rounded-lg overflow-hidden shadow-[0_0_20px_rgba(212,175,55,0.3)] bg-black">
         {/* Decorative Lines */}
         <div className="absolute inset-0 border border-[#F5E6BF]/20 m-1 rounded-sm z-10"></div>
         

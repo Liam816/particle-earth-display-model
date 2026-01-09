@@ -70,15 +70,24 @@ export default function App() {
     const handleFirstInteraction = () => {
       if (audioRef.current && !hasTriedMusicPlay.current) {
         hasTriedMusicPlay.current = true;
-        audioRef.current.play().then(() => {
-          setIsMusicPlaying(true);
-        }).catch(console.error);
+        // Safari requires synchronous play() call in user interaction handler
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsMusicPlaying(true);
+            })
+            .catch((error) => {
+              console.error('Auto play failed:', error);
+              // Safari may block autoplay, that's okay - user can click the button
+            });
+        }
       }
       document.removeEventListener('click', handleFirstInteraction);
       document.removeEventListener('touchstart', handleFirstInteraction);
     };
-    document.addEventListener('click', handleFirstInteraction);
-    document.addEventListener('touchstart', handleFirstInteraction);
+    document.addEventListener('click', handleFirstInteraction, { passive: true });
+    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
 
     return () => {
       document.removeEventListener('click', handleFirstInteraction);
@@ -94,9 +103,16 @@ export default function App() {
   useEffect(() => {
     if (handPosition.detected && audioRef.current && !hasTriedMusicPlay.current) {
       hasTriedMusicPlay.current = true;
-      audioRef.current.play().then(() => {
-        setIsMusicPlaying(true);
-      }).catch(console.error);
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsMusicPlaying(true);
+          })
+          .catch((error) => {
+            console.error('Gesture play failed:', error);
+          });
+      }
     }
   }, [handPosition.detected]);
 
@@ -106,8 +122,24 @@ export default function App() {
         audioRef.current.pause();
         setIsMusicPlaying(false);
       } else {
-        audioRef.current.play();
-        setIsMusicPlaying(true);
+        // Safari requires play() to be called synchronously in user interaction handler
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsMusicPlaying(true);
+            })
+            .catch((error) => {
+              console.error('Play failed:', error);
+              // If play fails, try to load and play again
+              if (audioRef.current) {
+                audioRef.current.load();
+                audioRef.current.play()
+                  .then(() => setIsMusicPlaying(true))
+                  .catch(err => console.error('Retry play failed:', err));
+              }
+            });
+        }
       }
     }
   };

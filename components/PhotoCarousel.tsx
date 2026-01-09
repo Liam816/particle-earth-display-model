@@ -191,6 +191,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [hoveredPhotoKey, setHoveredPhotoKey] = useState<string | null>(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
+  const [isSpeedBoost, setIsSpeedBoost] = useState(false); // Track if left arrow key is pressed
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
@@ -244,6 +245,29 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
     };
   }, [mode]);
 
+  // Keyboard event listener for speed boost (left arrow key)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && stage === CarouselStage.SCROLLING) {
+        setIsSpeedBoost(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        setIsSpeedBoost(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [stage]);
+
   // Animation loop
   useEffect(() => {
     if (stage === CarouselStage.HIDDEN) return;
@@ -262,7 +286,8 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
           return newProgress;
         });
       } else if (stage === CarouselStage.SCROLLING && !isPaused && !hoveredPhotoKey && !selectedPhotoUrl) {
-        const scrollSpeed = 40;
+        const baseSpeed = 40;
+        const scrollSpeed = isSpeedBoost ? baseSpeed * 3 : baseSpeed; // 3x speed when left arrow is pressed
         setOffset((prev) => {
           // Use modulo for true infinite loop
           return (prev + scrollSpeed * deltaTime) % singleSetWidth;
@@ -279,7 +304,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [stage, singleSetWidth, isPaused, hoveredPhotoKey, selectedPhotoUrl]);
+  }, [stage, singleSetWidth, isPaused, hoveredPhotoKey, selectedPhotoUrl, isSpeedBoost]);
 
   if (stage === CarouselStage.HIDDEN) return null;
 
@@ -402,6 +427,28 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
 
       {/* Falling cakes effect */}
       <FallingCakes isActive={stage === CarouselStage.SCROLLING || stage === CarouselStage.FLYING_IN} />
+
+      {/* Speed boost hint - only show during scrolling */}
+      {stage === CarouselStage.SCROLLING && !selectedPhotoUrl && (
+        <div
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-none"
+          style={{
+            opacity: stage === CarouselStage.SCROLLING ? 1 : 0,
+            transition: 'opacity 0.5s ease-in-out'
+          }}
+        >
+          <p
+            className="text-[#F5E6BF] text-lg md:text-xl text-center"
+            style={{
+              fontFamily: 'cursive, "Comic Sans MS", "Apple Chancery", "Bradley Hand"',
+              textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              letterSpacing: '0.5px'
+            }}
+          >
+            Press and hold the left arrow ⬅️ to speed up
+          </p>
+        </div>
+      )}
 
       {/* Enlarged photo modal */}
       {selectedPhotoUrl && (

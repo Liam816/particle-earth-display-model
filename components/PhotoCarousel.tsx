@@ -195,7 +195,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const lastTimeRef = useRef<number>(0);
 
   // Photo dimensions and spacing
-  const photoWidth = 280;
+  const photoWidth = 360;
   const photoSpacing = 40;
   const totalPhotoWidth = photoWidth + photoSpacing;
   const singleSetWidth = CITY_PHOTOS.length * totalPhotoWidth;
@@ -388,8 +388,8 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
       <div
         className="absolute inset-0"
         style={{
-          maskImage: 'linear-gradient(to right, transparent 0%, transparent 20%, black 35%, black 65%, transparent 80%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent 20%, black 35%, black 65%, transparent 80%, transparent 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, transparent 10%, black 18%, black 82%, transparent 90%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent 10%, black 18%, black 82%, transparent 90%, transparent 100%)',
           opacity: stage === CarouselStage.FLYING_IN ? flyProgress : 1,
         }}
       >

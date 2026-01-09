@@ -188,6 +188,9 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   const [stage, setStage] = useState<CarouselStage>(CarouselStage.HIDDEN);
   const [offset, setOffset] = useState(0);
   const [flyProgress, setFlyProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [hoveredPhotoKey, setHoveredPhotoKey] = useState<string | null>(null);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
   const animationRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
@@ -255,7 +258,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
           }
           return newProgress;
         });
-      } else if (stage === CarouselStage.SCROLLING) {
+      } else if (stage === CarouselStage.SCROLLING && !isPaused && !hoveredPhotoKey) {
         const scrollSpeed = 40;
         setOffset((prev) => {
           // Use modulo for true infinite loop
@@ -273,7 +276,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [stage, singleSetWidth]);
+  }, [stage, singleSetWidth, isPaused, hoveredPhotoKey]);
 
   if (stage === CarouselStage.HIDDEN) return null;
 
@@ -329,17 +332,23 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
           transform = `translate(${currentX}px, ${currentY}px) rotate(${currentRotation}deg) scale(${currentScale})`;
         }
 
+        const isHovered = hoveredPhotoKey === photo.key;
+
         return (
           <div
             key={`${isBlurred ? 'blur' : 'clear'}-${photo.key}`}
-            className="absolute flex-shrink-0"
+            className="absolute flex-shrink-0 transition-all duration-200 cursor-pointer"
             style={{
               width: photoWidth,
               transform,
               opacity: isBlurred ? 0.4 : 1,
+              pointerEvents: isBlurred ? 'none' : 'auto',
             }}
+            onMouseEnter={() => !isBlurred && setHoveredPhotoKey(photo.key)}
+            onMouseLeave={() => setHoveredPhotoKey(null)}
+            onClick={() => !isBlurred && setSelectedPhotoUrl(photo.url)}
           >
-            <div className="bg-white p-3 pb-10 shadow-2xl relative">
+            <div className={`bg-white p-3 pb-10 shadow-2xl relative transition-all duration-200 ${isHovered ? 'scale-110 shadow-[0_0_30px_rgba(212,175,55,0.5)]' : ''}`}>
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-4 bg-gradient-to-b from-[#D4AF37] to-[#C5A028] rounded-sm shadow-lg z-10"></div>
               <img
                 src={photo.url}
@@ -357,16 +366,16 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 z-30 overflow-hidden">
       {/* Semi-transparent backdrop */}
       <div
-        className="absolute inset-0 bg-black transition-opacity duration-300"
+        className="absolute inset-0 bg-black transition-opacity duration-300 pointer-events-none"
         style={{ opacity: backdropOpacity }}
       ></div>
 
       {/* Blurred layer */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
           filter: 'blur(10px)',
           opacity: stage === CarouselStage.FLYING_IN ? flyProgress : 1,
@@ -375,7 +384,7 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
         {renderPhotoStrip(true)}
       </div>
 
-      {/* Clear center layer with gradient mask */}
+      {/* Clear center layer with gradient mask - This layer is interactive */}
       <div
         className="absolute inset-0"
         style={{
@@ -389,6 +398,45 @@ export const PhotoCarousel: React.FC<PhotoCarouselProps> = ({ mode }) => {
 
       {/* Falling cakes effect */}
       <FallingCakes isActive={stage === CarouselStage.SCROLLING || stage === CarouselStage.FLYING_IN} />
+
+      {/* Enlarged photo modal */}
+      {selectedPhotoUrl && (
+        <div
+          className="absolute inset-0 bg-black/80 flex items-center justify-center pointer-events-auto z-50"
+          onClick={() => setSelectedPhotoUrl(null)}
+        >
+          <div
+            className="relative bg-white p-6 pb-20 shadow-2xl max-w-2xl max-h-[85vh] rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+            style={{ transform: 'rotate(-2deg)' }}
+          >
+            {/* Gold clip at top */}
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-6 bg-gradient-to-b from-[#D4AF37] to-[#C5A028] rounded-sm shadow-lg z-10"></div>
+
+            {/* Photo */}
+            <img
+              src={selectedPhotoUrl}
+              alt="Enlarged view"
+              className="w-full h-auto object-contain"
+              style={{ maxHeight: 'calc(85vh - 80px)' }}
+            />
+
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 font-bold text-lg"
+              onClick={() => setSelectedPhotoUrl(null)}
+              title="关闭"
+            >
+              ✕
+            </button>
+
+            {/* Instructions */}
+            <div className="text-center mt-4 text-gray-600 text-sm">
+              点击背景或按钮关闭
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -40,12 +40,15 @@ interface PolaroidItemProps {
   animStage: PolaroidAnimationStage;
   isActive: boolean;
   isExiting: boolean;
+  onHover?: (hovered: boolean) => void;
+  isHovered?: boolean;
 }
 
-const PolaroidItem: React.FC<PolaroidItemProps> = ({ data, animStage, isActive, isExiting }) => {
+const PolaroidItem: React.FC<PolaroidItemProps> = ({ data, animStage, isActive, isExiting, onHover, isHovered }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [texture, setTexture] = useState<THREE.Texture | null>(null);
   const [error, setError] = useState(false);
+  const scaleRef = useRef(1);
 
   useEffect(() => {
     const loader = new THREE.TextureLoader();
@@ -109,6 +112,11 @@ const PolaroidItem: React.FC<PolaroidItemProps> = ({ data, animStage, isActive, 
       }
     }
 
+    // Handle hover scale for active conveyor items
+    const targetScale = (isHovered && isActive && animStage === PolaroidAnimationStage.CONVEYOR) ? 1.3 : 1;
+    scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, delta * 8);
+    groupRef.current.scale.setScalar(scaleRef.current);
+
     if (animStage === PolaroidAnimationStage.FORMED) {
         const dummy = new THREE.Object3D();
         dummy.position.copy(groupRef.current.position);
@@ -142,6 +150,33 @@ const PolaroidItem: React.FC<PolaroidItemProps> = ({ data, animStage, isActive, 
     }
   });
 
+  // Only add hover handlers for active conveyor items
+  const handlePointerOver = (e: any) => {
+    e.stopPropagation();
+    console.log('[PolaroidItem] pointerOver', {
+      id: data.id,
+      isActive,
+      animStage,
+      isConveyor: animStage === PolaroidAnimationStage.CONVEYOR,
+      hasOnHover: !!onHover
+    });
+    if (isActive && animStage === PolaroidAnimationStage.CONVEYOR && onHover) {
+      console.log('[PolaroidItem] triggering pause');
+      document.body.style.cursor = 'pointer';
+      onHover(true);
+    }
+  };
+
+  const handlePointerOut = (e: any) => {
+    e.stopPropagation();
+    console.log('[PolaroidItem] pointerOut', { id: data.id, isActive, animStage });
+    if (isActive && animStage === PolaroidAnimationStage.CONVEYOR && onHover) {
+      console.log('[PolaroidItem] triggering resume');
+      document.body.style.cursor = 'auto';
+      onHover(false);
+    }
+  };
+
   return (
     <group ref={groupRef}>
       <mesh position={[0, 1.2, -0.1]}>
@@ -150,7 +185,11 @@ const PolaroidItem: React.FC<PolaroidItemProps> = ({ data, animStage, isActive, 
       </mesh>
 
       <group position={[0, 0, 0]}>
-        <mesh position={[0, 0, 0]}>
+        <mesh
+          position={[0, 0, 0]}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+        >
           <boxGeometry args={[1.2, 1.5, 0.02]} />
           <meshStandardMaterial color="#fdfdfd" roughness={0.8} />
         </mesh>
@@ -188,6 +227,7 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, defa
   const [animStage, setAnimStage] = useState(PolaroidAnimationStage.FORMED);
   const [activeIndex, setActiveIndex] = useState(0);
   const [exitingIndex, setExitingIndex] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const stageTimerRef = useRef<number | null>(null);
   const conveyorTimerRef = useRef<number | null>(null);
   const photos = uploadedPhotos.length > 0 ? uploadedPhotos : defaultPhotos;
@@ -219,10 +259,9 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, defa
   }, [mode]);
 
   useEffect(() => {
-    if (animStage === PolaroidAnimationStage.CONVEYOR && photos.length > 0) {
-      setActiveIndex(0);
-      setExitingIndex(null);
-
+    console.log('[Polaroids] conveyor effect', { animStage, isPaused, photosLen: photos.length });
+    if (animStage === PolaroidAnimationStage.CONVEYOR && photos.length > 0 && !isPaused) {
+      console.log('[Polaroids] starting interval');
       conveyorTimerRef.current = window.setInterval(() => {
         setActiveIndex((prevActive) => {
           setExitingIndex(prevActive);
@@ -230,10 +269,10 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, defa
         });
       }, 3000);
     } else {
+      console.log('[Polaroids] clearing interval, isPaused:', isPaused);
       if (conveyorTimerRef.current !== null) {
         clearInterval(conveyorTimerRef.current);
       }
-      setExitingIndex(null);
     }
 
     return () => {
@@ -241,7 +280,16 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, defa
         clearInterval(conveyorTimerRef.current);
       }
     };
-  }, [animStage, photos.length]);
+  }, [animStage, photos.length, isPaused]);
+
+  // Reset state when entering conveyor mode
+  useEffect(() => {
+    if (animStage === PolaroidAnimationStage.CONVEYOR) {
+      setActiveIndex(0);
+      setExitingIndex(null);
+      setIsPaused(false);
+    }
+  }, [animStage]);
 
   const photoData = useMemo(() => {
     if (photos.length === 0) return [];
@@ -297,6 +345,8 @@ export const Polaroids: React.FC<PolaroidsProps> = ({ mode, uploadedPhotos, defa
           animStage={animStage}
           isActive={i === activeIndex}
           isExiting={i === exitingIndex}
+          onHover={setIsPaused}
+          isHovered={isPaused && i === activeIndex}
         />
       ))}
     </group>
